@@ -76,7 +76,7 @@ export default function Dashboard() {
   const dailyHabits = habits.filter(h => h.type === 'daily');
   // Show weekly/monthly only if NOT completed
   const weeklyHabits = habits.filter(h => h.type === 'weekly');
-  const monthlyHabits = habits.filter(h => h.type === 'monthly' && !isCompleted(h));
+  const monthlyHabits = habits.filter(h => h.type === 'monthly');
 
   return (
     <div style={{ paddingBottom: '100px' }} onClick={() => setShowProfileMenu(false)}>
@@ -185,6 +185,7 @@ export default function Dashboard() {
                 habit={habit}
                 log={logs[habit.id]}
                 date={currentDate}
+                onEdit={setEditingHabit}
               />
             ))}
           </section>
@@ -195,13 +196,14 @@ export default function Dashboard() {
       {
         monthlyHabits.length > 0 && (
           <section style={{ marginBottom: '2rem' }}>
-            <h3 style={{ marginBottom: '1rem', opacity: 0.8 }}>Monthly Goals (Incomplete)</h3>
+            <h3 style={{ marginBottom: '1rem', opacity: 0.8 }}>Monthly Goals</h3>
             {monthlyHabits.map(habit => (
               <HabitCard
                 key={habit.id}
                 habit={habit}
                 log={logs[habit.id]}
                 date={currentDate}
+                onEdit={setEditingHabit}
               />
             ))}
           </section>

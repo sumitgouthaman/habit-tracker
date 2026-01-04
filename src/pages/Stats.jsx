@@ -68,18 +68,30 @@ function HabitStatsCard({ habit }) {
 
             {hasGraph && (
                 <div style={{ marginTop: '2rem', animation: 'fadeIn 0.3s' }}>
-                    <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
-                        {['7d', '30d'].map(range => (
-                            <button
-                                key={range}
-                                onClick={() => setTimeRange(range)}
-                                className={timeRange === range ? 'btn' : 'btn btn-secondary'}
-                                style={{ fontSize: '0.8rem', padding: '0.3rem 0.8rem', minWidth: 'auto' }}
-                            >
-                                {range === '7d' ? 'Last 7 Days' : 'Last 30 Days'}
-                            </button>
-                        ))}
-                    </div>
+                    {habit.type === 'daily' && (
+                        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+                            {['7d', '30d'].map(range => (
+                                <button
+                                    key={range}
+                                    onClick={() => setTimeRange(range)}
+                                    className={timeRange === range ? 'btn' : 'btn btn-secondary'}
+                                    style={{ fontSize: '0.8rem', padding: '0.3rem 0.8rem', minWidth: 'auto' }}
+                                >
+                                    {range === '7d' ? 'Last 7 Days' : 'Last 30 Days'}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                    {habit.type === 'weekly' && (
+                        <div style={{ marginBottom: '1rem', fontSize: '0.85rem', color: 'var(--color-text-dim)', fontWeight: 500 }}>
+                            Last 12 Weeks
+                        </div>
+                    )}
+                    {habit.type === 'monthly' && (
+                        <div style={{ marginBottom: '1rem', fontSize: '0.85rem', color: 'var(--color-text-dim)', fontWeight: 500 }}>
+                            Last 12 Months
+                        </div>
+                    )}
                     <HabitStatsChart habit={habit} range={timeRange} />
                 </div>
             )}
