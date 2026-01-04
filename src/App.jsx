@@ -8,11 +8,36 @@ import BottomNav from './components/BottomNav';
 import Stats from './pages/Stats';
 import Settings from './pages/Settings';
 
+import { auth } from './lib/firebase';
+import { signOut } from 'firebase/auth';
+
 function PrivateLayout({ children }) {
-  const { user, loading } = useAuth();
+  const { user, loading, isAllowed } = useAuth();
 
   if (loading) return <div className="glass-panel" style={{ margin: '2rem' }}>Loading...</div>;
   if (!user) return <Navigate to="/login" />;
+
+  if (isAllowed === false) {
+    return (
+      <div style={{
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        height: '100vh', padding: '2rem', textAlign: 'center'
+      }}>
+        <div className="glass-panel" style={{ padding: '2rem', maxWidth: '400px' }}>
+          <h2 style={{ marginBottom: '1rem', color: 'var(--color-danger)' }}>Access Restricted</h2>
+          <p style={{ color: 'var(--color-text-dim)', marginBottom: '2rem' }}>
+            This application is currently in development and access is limited to allowed testers.
+          </p>
+          <button
+            className="btn btn-secondary"
+            onClick={() => signOut(auth)}
+          >
+            Log Out
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
