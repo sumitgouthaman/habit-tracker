@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "license": "MIT",
   "type": "module",
+  "homepage": "https://sumitgouthaman.github.io/habit-tracker",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 // Pages will be imported here
 import Login from './pages/Login';
@@ -30,30 +30,28 @@ function App() {
   return (
     <AuthProvider>
       <HabitProvider>
-        <Router>
-          <Routes>
-            <Route path="/login" element={<Login />} />
+        <Routes>
+          <Route path="/login" element={<Login />} />
 
-            <Route path="/" element={
-              <PrivateLayout>
-                <Dashboard />
-              </PrivateLayout>
-            } />
+          <Route path="/" element={
+            <PrivateLayout>
+              <Dashboard />
+            </PrivateLayout>
+          } />
 
-            <Route path="/stats" element={
-              <PrivateLayout>
-                <Stats />
-              </PrivateLayout>
-            } />
+          <Route path="/stats" element={
+            <PrivateLayout>
+              <Stats />
+            </PrivateLayout>
+          } />
 
-            <Route path="/settings" element={
-              <PrivateLayout>
-                <Settings />
-              </PrivateLayout>
-            } />
+          <Route path="/settings" element={
+            <PrivateLayout>
+              <Settings />
+            </PrivateLayout>
+          } />
 
-          </Routes>
-        </Router>
+        </Routes>
       </HabitProvider>
     </AuthProvider>
   );
