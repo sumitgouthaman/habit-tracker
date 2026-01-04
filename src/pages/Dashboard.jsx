@@ -1,0 +1,256 @@
+import { useState, useEffect } from 'react';
+import { useAuth } from '../context/AuthContext';
+import { auth } from '../lib/firebase';
+import { useHabits } from '../context/HabitContext';
+import { getSomedayLogs, getPeriodKey } from '../lib/db';
+import HabitCard from '../components/HabitCard';
+import NewHabitForm from '../components/NewHabitForm';
+import EditHabitForm from '../components/EditHabitForm';
+import { format, addDays, subDays, isSameDay } from 'date-fns';
+import { Plus, ChevronLeft, ChevronRight } from 'lucide-react';
+
+export default function Dashboard() {
+  const { user, loading: authLoading } = useAuth();
+  const { habits, loading: habitsLoading } = useHabits();
+  const [logs, setLogs] = useState({});
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [showNewHabitForm, setShowNewHabitForm] = useState(false);
+  const [editingHabit, setEditingHabit] = useState(null);
+
+  const [currentDate, setCurrentDate] = useState(new Date());
+
+  useEffect(() => {
+    if (!user || habits.length === 0) {
+      setLogs({});
+      return;
+    }
+
+    const fetchLogs = async () => {
+      try {
+        // Fetch logs for all habits for the selected date
+        // Arguments: userId, habits, date
+        const data = await getSomedayLogs(user.uid, habits, currentDate);
+
+        const logMap = {};
+        data.forEach(log => {
+          if (log) logMap[log.habitId] = log;
+        });
+        setLogs(logMap);
+      } catch (error) {
+        console.error("Error fetching logs:", error);
+      }
+    };
+
+    fetchLogs();
+  }, [user, habits, currentDate]);
+
+  const handlePrevDay = () => setCurrentDate(prev => subDays(prev, 1));
+  const handleNextDay = () => setCurrentDate(prev => addDays(prev, 1));
+  const isToday = isSameDay(currentDate, new Date());
+
+  const handleSignOut = () => {
+    auth.signOut();
+  };
+
+  if (authLoading || habitsLoading) {
+    return (
+      <div className="glass-panel" style={{ margin: '2rem', textAlign: 'center' }}>
+        <p>Loading...</p>
+        <p style={{ fontSize: '0.8rem', color: 'var(--color-text-dim)' }}>
+          Auth: {authLoading ? '...' : 'Done'}, Habits: {habitsLoading ? '...' : 'Done'}
+        </p>
+      </div>
+    );
+  }
+
+  // Helper to get log for a habit
+  const getHabitLog = (habit) => {
+    return logs[habit.id];
+  };
+
+  const isCompleted = (habit) => {
+    const log = getHabitLog(habit);
+    return log?.completed;
+  };
+
+  const dailyHabits = habits.filter(h => h.type === 'daily');
+  // Show weekly/monthly only if NOT completed
+  const weeklyHabits = habits.filter(h => h.type === 'weekly');
+  const monthlyHabits = habits.filter(h => h.type === 'monthly' && !isCompleted(h));
+
+  return (
+    <div style={{ paddingBottom: '100px' }} onClick={() => setShowProfileMenu(false)}>
+      <header style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: '2rem'
+      }}>
+        {/* ... (Date nav remains same) ... */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <button onClick={(e) => { e.stopPropagation(); handlePrevDay(); }} className="btn-secondary" style={{ padding: '0.4rem', border: 'none' }}>
+            <ChevronLeft size={24} />
+          </button>
+
+          <div>
+            <h2 style={{ fontSize: '1.8rem', lineHeight: '1.2' }}>
+              {isToday ? 'Today' : format(currentDate, 'MMM do')}
+            </h2>
+            <div style={{ color: 'var(--color-text-dim)', fontSize: '0.9rem' }}>
+              {format(currentDate, 'EEEE')}
+            </div>
+          </div>
+
+          <button onClick={(e) => { e.stopPropagation(); handleNextDay(); }} className="btn-secondary" style={{ padding: '0.4rem', border: 'none' }}>
+            <ChevronRight size={24} />
+          </button>
+        </div>
+
+        {/* Profile */}
+        <div style={{ position: 'relative' }}>
+          <button
+            onClick={(e) => { e.stopPropagation(); setShowProfileMenu(!showProfileMenu); }}
+            style={{
+              width: '40px', height: '40px', borderRadius: '50%', overflow: 'hidden',
+              border: '1px solid var(--glass-border)', padding: 0, cursor: 'pointer', background: 'transparent'
+            }}
+          >
+            {user?.photoURL ? (
+              <img src={user.photoURL} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            ) : (
+              <div style={{ width: '100%', height: '100%', background: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold' }}>
+                {user?.email?.[0].toUpperCase()}
+              </div>
+            )}
+          </button>
+
+          {showProfileMenu && (
+            <div style={{
+              position: 'absolute',
+              top: '110%',
+              right: 0,
+              background: '#1e293b',
+              border: '1px solid var(--glass-border)',
+              borderRadius: '8px',
+              padding: '0.5rem',
+              zIndex: 50,
+              boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
+              minWidth: '120px'
+            }}>
+              <button
+                onClick={handleSignOut}
+                style={{
+                  background: 'transparent', border: 'none', color: '#fca5a5',
+                  padding: '0.5rem 1rem', width: '100%', textAlign: 'left', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem'
+                }}
+              >
+                Log Out
+              </button>
+            </div>
+          )}
+        </div>
+      </header>
+
+
+
+      {/* Daily Habits */}
+      <section style={{ marginBottom: '2rem' }}>
+        <h3 style={{ marginBottom: '1rem', opacity: 0.8 }}>Daily Goals</h3>
+        {dailyHabits.length === 0 ? (
+          <div className="glass-panel" style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-dim)' }}>
+            No daily habits yet.
+          </div>
+        ) : (
+          dailyHabits.map(habit => (
+            <HabitCard
+              key={habit.id}
+              habit={habit}
+              log={logs[habit.id]}
+              date={currentDate}
+              onEdit={setEditingHabit}
+            />
+          ))
+        )}
+      </section>
+
+      {/* Weekly - Placeholder for now */}
+      {
+        weeklyHabits.length > 0 && (
+          <section style={{ marginBottom: '2rem' }}>
+            <h3 style={{ marginBottom: '1rem', opacity: 0.8 }}>Weekly Goals</h3>
+            {weeklyHabits.map(habit => (
+              <HabitCard
+                key={habit.id}
+                habit={habit}
+                log={logs[habit.id]}
+                date={currentDate}
+              />
+            ))}
+          </section>
+        )
+      }
+
+      {/* Monthly - Placeholder for now */}
+      {
+        monthlyHabits.length > 0 && (
+          <section style={{ marginBottom: '2rem' }}>
+            <h3 style={{ marginBottom: '1rem', opacity: 0.8 }}>Monthly Goals (Incomplete)</h3>
+            {monthlyHabits.map(habit => (
+              <HabitCard
+                key={habit.id}
+                habit={habit}
+                log={logs[habit.id]}
+                date={currentDate}
+              />
+            ))}
+          </section>
+        )
+      }
+
+      {/* Floating Action Button */}
+      <button
+        onClick={() => setShowNewHabitForm(true)}
+        style={{
+          position: 'fixed',
+          bottom: '100px',
+          right: '2rem',
+          width: '56px',
+          height: '56px',
+          borderRadius: '50%',
+          background: 'var(--color-primary)',
+          color: 'white',
+          border: 'none',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'pointer',
+          zIndex: 40
+        }}
+      >
+        <Plus size={28} />
+      </button>
+
+      {
+        showNewHabitForm && (
+          <NewHabitForm onClose={() => setShowNewHabitForm(false)} />
+        )
+      }
+
+      {
+        editingHabit && (
+          <EditHabitForm
+            habit={editingHabit}
+            log={logs[editingHabit.id]}
+            date={currentDate}
+            onClose={() => setEditingHabit(null)}
+            onLogUpdate={(habitId, logData) => {
+              setLogs(prev => ({ ...prev, [habitId]: logData }));
+            }}
+          />
+        )
+      }
+    </div >
+  );
+}

@@ -1,0 +1,71 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isValidHabit() {
+      let habit = request.resource.data;
+      return habit.keys().hasOnly(['id', 'userId', 'title', 'type', 'targetCount', 'createdAt', 'archived', 'stats', 'increments', 'frequency']) &&
+             // String Constraints
+             habit.title is string && habit.title.size() > 0 && habit.title.size() <= 60 &&
+             habit.type is string && (habit.type == 'daily' || habit.type == 'weekly' || habit.type == 'monthly') &&
+             habit.id is string &&
+             // Backward compatibility: Allow userId if present, but it must match auth.
+             ( !habit.keys().hasAny(['userId']) || habit.userId == request.auth.uid ) &&
+             // Optional Strings
+             ( !habit.keys().hasAny(['frequency']) || habit.frequency is string ) &&
+             // Optional Arrays
+             ( !habit.keys().hasAny(['increments']) || habit.increments is list ) &&
+             // Number Constraints
+             habit.targetCount is number && habit.targetCount > 0 &&
+             // Timestamp Constraints
+             habit.createdAt is timestamp &&
+             // Boolean Constraints
+             habit.archived is bool &&
+             // Stats Constraints (Deep Check)
+             habit.stats is map &&
+             habit.stats.keys().hasAll(['currentStreak', 'totalCompletions']) &&
+             habit.stats.currentStreak is number &&
+             habit.stats.totalCompletions is number &&
+             ( !habit.stats.keys().hasAny(['lastCompletedDate']) || habit.stats.lastCompletedDate is string || habit.stats.lastCompletedDate == null );
+    }
+
+    function isValidLog() {
+      let log = request.resource.data;
+      return log.keys().hasOnly(['id', 'habitId', 'userId', 'date', 'value', 'completed', 'updatedAt']) &&
+             // String Constraints
+             log.id is string &&
+             log.habitId is string &&
+             log.date is string &&
+             // Backward compatibility: Allow userId if present, but it must match auth.
+             ( !log.keys().hasAny(['userId']) || log.userId == request.auth.uid ) &&
+             // Number Constraints
+             log.value is number && log.value >= 0 &&
+             // Boolean Constraints
+             log.completed is bool &&
+             // Timestamp Constraints
+             log.updatedAt is timestamp;
+    }
+
+    function isAllowedUser() {
+      // Allowlist of emails. If empty, all users are allowed.
+      let allowedEmails = []; 
+      return allowedEmails.size() == 0 || (request.auth.token.email in allowedEmails);
+    }
+
+    match /users/{userId} {
+      match /habits/{habitId} {
+        allow read: if request.auth != null && request.auth.uid == userId && isAllowedUser();
+        allow create: if request.auth != null && request.auth.uid == userId && isAllowedUser() && isValidHabit();
+        allow update: if request.auth != null && request.auth.uid == userId && isAllowedUser() && isValidHabit();
+        allow delete: if request.auth != null && request.auth.uid == userId && isAllowedUser();
+      }
+      
+      match /habit_logs/{logId} {
+         allow read: if request.auth != null && request.auth.uid == userId && isAllowedUser();
+         allow create: if request.auth != null && request.auth.uid == userId && isAllowedUser() && isValidLog();
+         allow update: if request.auth != null && request.auth.uid == userId && isAllowedUser() && isValidLog();
+         allow delete: if request.auth != null && request.auth.uid == userId && isAllowedUser();
+      }
+    }
+  }
+}

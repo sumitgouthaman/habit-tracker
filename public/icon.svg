@@ -1,0 +1,18 @@
+<svg width="512" height="512" viewBox="32 32 448 448" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg-gradient" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#3b82f6" />
+      <stop offset="100%" stop-color="#8b5cf6" />
+    </linearGradient>
+    <filter id="glass" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="15" result="blur" />
+      <feColorMatrix in="blur" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 19 -9" result="goo" />
+    </filter>
+  </defs>
+  
+  <rect x="32" y="32" width="448" height="448" rx="128" fill="url(#bg-gradient)" />
+  
+  <rect x="32" y="32" width="448" height="448" rx="128" fill="white" fill-opacity="0.1" stroke="white" stroke-opacity="0.2" stroke-width="4" />
+
+  <path d="M150 266 L218 334 L362 190" stroke="white" stroke-width="48" stroke-linecap="round" stroke-linejoin="round" />
+</svg>
