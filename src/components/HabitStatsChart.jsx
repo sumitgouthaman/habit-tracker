@@ -1,98 +1,81 @@
 import { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, ReferenceLine } from 'recharts';
-import { getHabitHistory, getPeriodKey } from '../lib/db';
-import { useAuth } from '../context/AuthContext';
+import { getPeriodKey } from '../lib/db';
+import { getLogValue } from '../utils/habitUtils'; // Use helper
 import { format, subDays, subWeeks, subMonths, eachDayOfInterval, eachWeekOfInterval, eachMonthOfInterval } from 'date-fns';
 import { Check, X } from 'lucide-react';
+import { useAuth } from '../context/AuthContext'; // Keeping useAuth if needed for future, but currently unused in this logic
 
 export default function HabitStatsChart({ habit, range }) { // range: '7d', '30d'
-    const { user } = useAuth();
+    // const { user } = useAuth(); // Unused in new logic
     const [data, setData] = useState([]);
-    const [loading, setLoading] = useState(true);
+
+    // NO LOADING STATE NEEDED anymore because 'habit' already has the logs!
+    // But we still need to calculate the chart data on mount/change.
 
     useEffect(() => {
-        const fetchData = async () => {
-            setLoading(true);
-            try {
-                // Determine date range and interval based on habit type
-                const today = new Date();
-                let startDate, endDate = today;
-                let allTimePoints = [];
-                let dateFmt = 'daily';
-                let formatXAxis = (d) => format(d, 'd');
-                let formatTooltip = (d) => format(d, 'MMM d');
-                let formatShort = (d) => format(d, 'd');
-                let formatDayName = (d) => format(d, 'EEE');
+        const calculateChartData = () => {
+            // Determine date range and interval based on habit type
+            const today = new Date();
+            let startDate, endDate = today;
+            let allTimePoints = [];
+            let dateFmt = 'daily';
+            let formatXAxis = (d) => format(d, 'd');
+            let formatTooltip = (d) => format(d, 'MMM d');
+            let formatShort = (d) => format(d, 'd');
+            let formatDayName = (d) => format(d, 'EEE');
 
-                if (habit.type === 'weekly') {
-                    // Last 12 weeks
-                    startDate = subWeeks(today, 11); // 11 weeks ago + current week = 12 points
-                    dateFmt = 'weekly';
-                    allTimePoints = eachWeekOfInterval({ start: startDate, end: endDate }, { weekStartsOn: 1 });
-                    formatXAxis = (d) => format(d, 'MMM d');
-                    formatTooltip = (d) => `Week of ${format(d, 'MMM d')}`;
-                    formatShort = (d) => format(d, 'd');
-                    formatDayName = (d) => format(d, 'EEE');
-                } else if (habit.type === 'monthly') {
-                    // Last 12 months
-                    startDate = subMonths(today, 11);
-                    dateFmt = 'monthly';
-                    allTimePoints = eachMonthOfInterval({ start: startDate, end: endDate });
-                    formatXAxis = (d) => format(d, 'MMM');
-                    formatTooltip = (d) => format(d, 'MMMM yyyy');
-                    formatShort = (d) => format(d, 'MMM');
-                    formatDayName = (d) => format(d, 'MMM');
-                } else {
-                    // Daily: Last 7 or 30 days
-                    const daysToSub = range === '30d' ? 29 : 6;
-                    startDate = subDays(today, daysToSub);
-                    dateFmt = 'daily';
-                    allTimePoints = eachDayOfInterval({ start: startDate, end: endDate });
-                    formatXAxis = (d) => format(d, range === '7d' ? 'EEE' : 'dd');
-                }
-
-                const startStr = getPeriodKey(startDate, dateFmt);
-                const endStr = getPeriodKey(endDate, dateFmt);
-
-                // Fetch logs
-                const logs = await getHabitHistory(user.uid, habit.id, startStr, endStr);
-
-                // Create a map of existing logs
-                const logMap = {};
-                logs.forEach(log => {
-                    logMap[log.date] = log.value;
-                });
-
-                const chartData = allTimePoints.map(point => {
-                    const dateKey = getPeriodKey(point, dateFmt);
-                    return {
-                        dateStr: formatTooltip(point),
-                        shortDate: formatShort(point),
-                        dayName: formatDayName(point),
-                        date: formatXAxis(point),
-                        fullDate: dateKey,
-                        value: logMap[dateKey] || 0
-                    };
-                });
-
-                setData(chartData);
-
-            } catch (err) {
-                console.error("Failed to load chart data:", err);
-            } finally {
-                setLoading(false);
+            if (habit.type === 'weekly') {
+                // Last 12 weeks
+                startDate = subWeeks(today, 11);
+                dateFmt = 'weekly';
+                allTimePoints = eachWeekOfInterval({ start: startDate, end: endDate }, { weekStartsOn: 1 });
+                formatXAxis = (d) => format(d, 'MMM d');
+                formatTooltip = (d) => `Week of ${format(d, 'MMM d')}`;
+                formatShort = (d) => format(d, 'd');
+                formatDayName = (d) => format(d, 'EEE');
+            } else if (habit.type === 'monthly') {
+                // Last 12 months
+                startDate = subMonths(today, 11);
+                dateFmt = 'monthly';
+                allTimePoints = eachMonthOfInterval({ start: startDate, end: endDate });
+                formatXAxis = (d) => format(d, 'MMM');
+                formatTooltip = (d) => format(d, 'MMMM yyyy');
+                formatShort = (d) => format(d, 'MMM');
+                formatDayName = (d) => format(d, 'MMM');
+            } else {
+                // Daily: Last 7 or 30 days
+                const daysToSub = range === '30d' ? 29 : 6;
+                startDate = subDays(today, daysToSub);
+                dateFmt = 'daily';
+                allTimePoints = eachDayOfInterval({ start: startDate, end: endDate });
+                formatXAxis = (d) => format(d, range === '7d' ? 'EEE' : 'dd');
             }
+
+            const chartData = allTimePoints.map(point => {
+                const dateKey = getPeriodKey(point, dateFmt);
+
+                // NEW LOGIC: Get value from habit.logs map using utils
+                const value = getLogValue(habit, point);
+
+                return {
+                    dateStr: formatTooltip(point),
+                    shortDate: formatShort(point),
+                    dayName: formatDayName(point),
+                    date: formatXAxis(point),
+                    fullDate: dateKey,
+                    value: value
+                };
+            });
+
+            setData(chartData);
         };
 
-        fetchData();
-    }, [habit, range, user]);
-
-    if (loading) {
-        return <div style={{ height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-dim)' }}>Loading stats...</div>;
-    }
+        calculateChartData();
+    }, [habit, range]); // Re-run when habit (logs) or range changes
 
     if (!data || data.length === 0) {
-        return <div style={{ height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-dim)' }}>No data found for this period.</div>;
+        return <div style={{ height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-dim)' }}>No data available.</div>;
     }
 
     // --- Render Logic ---
@@ -145,7 +128,7 @@ export default function HabitStatsChart({ habit, range }) { // range: '7d', '30d
     const average = data.length > 0 ? data.reduce((sum, item) => sum + item.value, 0) / data.length : 0;
 
     return (
-        <div style={{ height: '200px', width: '100%', marginTop: '1rem' }}>
+        <div style={{ height: '200px', width: '100%', marginTop: '1rem', minWidth: 0 }}>
             <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={data}>
                     <XAxis

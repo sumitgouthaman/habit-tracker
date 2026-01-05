@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useHabits } from '../context/HabitContext';
 import { BarChart2 } from 'lucide-react';
 import HabitStatsChart from '../components/HabitStatsChart';
+import { calculateStreak, calculateTotal } from '../utils/habitUtils';
 
 export default function Stats() {
     const { habits } = useHabits();
@@ -53,14 +54,14 @@ function HabitStatsCard({ habit }) {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <div style={{ background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '8px', textAlign: 'center' }}>
                     <div style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--color-primary)' }}>
-                        {habit.stats?.currentStreak || 0}
+                        {calculateStreak(habit)}
                     </div>
                     <div style={{ fontSize: '0.8rem', color: 'var(--color-text-dim)' }}>Current Streak</div>
                 </div>
 
                 <div style={{ background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '8px', textAlign: 'center' }}>
                     <div style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--color-secondary)' }}>
-                        {habit.stats?.totalCompletions || 0}
+                        {calculateTotal(habit)}
                     </div>
                     <div style={{ fontSize: '0.8rem', color: 'var(--color-text-dim)' }}>Total Completed</div>
                 </div>

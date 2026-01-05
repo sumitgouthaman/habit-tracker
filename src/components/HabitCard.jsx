@@ -1,14 +1,12 @@
 import { Check, Plus } from 'lucide-react';
 import { updateLog } from '../lib/db';
 import { useAuth } from '../context/AuthContext';
-import { useHabits } from '../context/HabitContext';
 import { useState, useEffect } from 'react';
 import clsx from 'clsx';
 import { format, isSameDay } from 'date-fns';
 
 export default function HabitCard({ habit, log, date, onEdit }) {
     const { user } = useAuth();
-    const { updateHabitInState } = useHabits();
     const [loading, setLoading] = useState(false);
 
     // Optimistic UI state
@@ -41,39 +39,8 @@ export default function HabitCard({ habit, log, date, onEdit }) {
             const wasCompleted = oldValue >= target;
 
             await updateLog(user.uid, habit.id, date, newValue, target, habit.type);
-
-            // Optimistically update stats if completion changed
-            if (isNowCompleted !== wasCompleted) {
-                const change = isNowCompleted ? 1 : -1;
-
-                let newStreak = habit.stats?.currentStreak || 0;
-                let newTotal = (habit.stats?.totalCompletions || 0) + change;
-
-                // Only update streak optimistically if we are editing TODAY
-                // This logic mirrors the simplified logic in db.js
-                // Note: accurate streak calculation requires knowing 'yesterday' status which we might not have here.
-                // But we can do a "best effort" optimistic update.
-
-                if (isSameDay(date, new Date()) && habit.type === 'daily') {
-                    if (isNowCompleted) {
-                        // Assuming valid continued streak if we just completed it to avoid complexity
-                        // Ideally we check if habit.stats.lastCompletedDate === yesterday
-                        // But for now, let's just increment if it wasn't already completed today
-                        newStreak += 1;
-                    } else {
-                        // Decrement if unchecked
-                        newStreak = Math.max(0, newStreak - 1);
-                    }
-                }
-
-                updateHabitInState(habit.id, {
-                    stats: {
-                        ...habit.stats,
-                        totalCompletions: newTotal,
-                        currentStreak: newStreak
-                    }
-                });
-            }
+            // Optimistic stat updates are no longer needed as stats are calculated on-the-fly from logs
+            // and the logs update will come back via the realtime listener.
         } catch (error) {
             console.error("Failed to update log:", error);
             setCurrentValue(oldValue); // Rollback

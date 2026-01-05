@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { auth } from '../lib/firebase';
 import { useHabits } from '../context/HabitContext';
-import { getSomedayLogs, getPeriodKey } from '../lib/db';
+import { getPeriodKey } from '../lib/db';
 import HabitCard from '../components/HabitCard';
 import NewHabitForm from '../components/NewHabitForm';
 import EditHabitForm from '../components/EditHabitForm';
@@ -12,37 +12,11 @@ import { Plus, ChevronLeft, ChevronRight } from 'lucide-react';
 export default function Dashboard() {
   const { user, loading: authLoading } = useAuth();
   const { habits, loading: habitsLoading } = useHabits();
-  const [logs, setLogs] = useState({});
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showNewHabitForm, setShowNewHabitForm] = useState(false);
   const [editingHabit, setEditingHabit] = useState(null);
 
   const [currentDate, setCurrentDate] = useState(new Date());
-
-  useEffect(() => {
-    if (!user || habits.length === 0) {
-      setLogs({});
-      return;
-    }
-
-    const fetchLogs = async () => {
-      try {
-        // Fetch logs for all habits for the selected date
-        // Arguments: userId, habits, date
-        const data = await getSomedayLogs(user.uid, habits, currentDate);
-
-        const logMap = {};
-        data.forEach(log => {
-          if (log) logMap[log.habitId] = log;
-        });
-        setLogs(logMap);
-      } catch (error) {
-        console.error("Error fetching logs:", error);
-      }
-    };
-
-    fetchLogs();
-  }, [user, habits, currentDate]);
 
   const handlePrevDay = () => setCurrentDate(prev => subDays(prev, 1));
   const handleNextDay = () => setCurrentDate(prev => addDays(prev, 1));
@@ -63,18 +37,13 @@ export default function Dashboard() {
     );
   }
 
-  // Helper to get log for a habit
-  const getHabitLog = (habit) => {
-    return logs[habit.id];
-  };
-
-  const isCompleted = (habit) => {
-    const log = getHabitLog(habit);
-    return log?.completed;
+  // Helper to extract log data for the current view date from the habit's "logs" map
+  const getHabitLogForView = (habit) => {
+    const key = getPeriodKey(currentDate, habit.type);
+    return habit.logs?.[key] || null;
   };
 
   const dailyHabits = habits.filter(h => h.type === 'daily');
-  // Show weekly/monthly only if NOT completed
   const weeklyHabits = habits.filter(h => h.type === 'weekly');
   const monthlyHabits = habits.filter(h => h.type === 'monthly');
 
@@ -86,7 +55,6 @@ export default function Dashboard() {
         alignItems: 'center',
         marginBottom: '2rem'
       }}>
-        {/* ... (Date nav remains same) ... */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <button onClick={(e) => { e.stopPropagation(); handlePrevDay(); }} className="btn-secondary" style={{ padding: '0.4rem', border: 'none' }}>
             <ChevronLeft size={24} />
@@ -153,7 +121,6 @@ export default function Dashboard() {
       </header>
 
 
-
       {/* Daily Habits */}
       <section style={{ marginBottom: '2rem' }}>
         <h3 style={{ marginBottom: '1rem', opacity: 0.8 }}>Daily Goals</h3>
@@ -164,9 +131,9 @@ export default function Dashboard() {
         ) : (
           dailyHabits.map(habit => (
             <HabitCard
-              key={habit.id}
+              key={`${habit.id}-${format(currentDate, 'yyyy-MM-dd')}`}
               habit={habit}
-              log={logs[habit.id]}
+              log={getHabitLogForView(habit)}
               date={currentDate}
               onEdit={setEditingHabit}
             />
@@ -174,16 +141,16 @@ export default function Dashboard() {
         )}
       </section>
 
-      {/* Weekly - Placeholder for now */}
+      {/* Weekly */}
       {
         weeklyHabits.length > 0 && (
           <section style={{ marginBottom: '2rem' }}>
             <h3 style={{ marginBottom: '1rem', opacity: 0.8 }}>Weekly Goals</h3>
             {weeklyHabits.map(habit => (
               <HabitCard
-                key={habit.id}
+                key={`${habit.id}-${format(currentDate, 'yyyy-MM-dd')}`}
                 habit={habit}
-                log={logs[habit.id]}
+                log={getHabitLogForView(habit)}
                 date={currentDate}
                 onEdit={setEditingHabit}
               />
@@ -192,16 +159,16 @@ export default function Dashboard() {
         )
       }
 
-      {/* Monthly - Placeholder for now */}
+      {/* Monthly */}
       {
         monthlyHabits.length > 0 && (
           <section style={{ marginBottom: '2rem' }}>
             <h3 style={{ marginBottom: '1rem', opacity: 0.8 }}>Monthly Goals</h3>
             {monthlyHabits.map(habit => (
               <HabitCard
-                key={habit.id}
+                key={`${habit.id}-${format(currentDate, 'yyyy-MM-dd')}`}
                 habit={habit}
-                log={logs[habit.id]}
+                log={getHabitLogForView(habit)}
                 date={currentDate}
                 onEdit={setEditingHabit}
               />
@@ -244,11 +211,13 @@ export default function Dashboard() {
         editingHabit && (
           <EditHabitForm
             habit={editingHabit}
-            log={logs[editingHabit.id]}
+            log={getHabitLogForView(editingHabit)}
             date={currentDate}
             onClose={() => setEditingHabit(null)}
-            onLogUpdate={(habitId, logData) => {
-              setLogs(prev => ({ ...prev, [habitId]: logData }));
+            onLogUpdate={() => {
+              // No-op for local state in this new architecture, 
+              // as Firestore listener in HabitContext will auto-update 'habits' prop
+              // which re-renders this component.
             }}
           />
         )

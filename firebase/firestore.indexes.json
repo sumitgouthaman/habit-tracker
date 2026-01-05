@@ -1,19 +1,4 @@
 {
-    "indexes": [
-        {
-            "collectionGroup": "habit_logs",
-            "queryScope": "COLLECTION",
-            "fields": [
-                {
-                    "fieldPath": "habitId",
-                    "order": "ASCENDING"
-                },
-                {
-                    "fieldPath": "date",
-                    "order": "ASCENDING"
-                }
-            ]
-        }
-    ],
+    "indexes": [],
     "fieldOverrides": []
 }

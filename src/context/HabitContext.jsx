@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { useAuth } from "./AuthContext";
-import { getUserHabits } from "../lib/db";
+import { getUserHabits, subscribeToHabits } from "../lib/db";
 
 const HabitContext = createContext();
 
@@ -10,47 +10,43 @@ export function HabitProvider({ children }) {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    const fetchHabits = async () => {
-        if (!user) {
+    useEffect(() => {
+        let unsubscribe;
+
+        if (user) {
+            setLoading(true);
+            try {
+                unsubscribe = subscribeToHabits(user.uid, (data) => {
+                    setHabits(data);
+                    setLoading(false);
+                });
+            } catch (err) {
+                console.error("Error subscribing to habits:", err);
+                setError(err.message);
+                setLoading(false);
+            }
+        } else {
             setHabits([]);
             setLoading(false);
-            return;
         }
 
-        try {
-            setLoading(true);
-            const data = await getUserHabits(user.uid);
-            setHabits(data);
-        } catch (err) {
-            console.error("Error fetching habits:", err);
-            setError(err.message);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        fetchHabits();
+        return () => {
+            if (unsubscribe) unsubscribe();
+        };
     }, [user]);
 
-    // Helper to update local state without refetching
-    const addHabitToState = (newHabit) => {
-        setHabits(prev => [...prev, newHabit]);
-    };
-
-    const removeHabitFromState = (habitId) => {
-        setHabits(prev => prev.filter(h => h.id !== habitId));
-    };
-
-    const updateHabitInState = (habitId, updates) => {
-        setHabits(prev => prev.map(h => h.id === habitId ? { ...h, ...updates } : h));
-    };
+    // Legacy helpers - kept for compatibility but effectively no-ops for state 
+    // since the subscription handles updates.
+    // Ideally components should just write to DB and let subscription update state.
+    const addHabitToState = () => { };
+    const removeHabitFromState = () => { };
+    const updateHabitInState = () => { };
 
     const value = {
         habits,
         loading,
         error,
-        refreshHabits: fetchHabits,
+        refreshHabits: () => { }, // No-op
         addHabitToState,
         removeHabitFromState,
         updateHabitInState
