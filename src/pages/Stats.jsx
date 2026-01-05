@@ -13,7 +13,10 @@ export default function Stats() {
     // For MVP, let's just default to '7d' and let the chart component handle the switcher?
     // Actually, passing 'range' is fine, but we need state per card.
 
-    // Easier approach: Move the card UI into a sub-component so it can have its own state.
+    const dailyHabits = habits.filter(h => h.type === 'daily').sort((a, b) => a.title.localeCompare(b.title));
+    const weeklyHabits = habits.filter(h => h.type === 'weekly').sort((a, b) => a.title.localeCompare(b.title));
+    const monthlyHabits = habits.filter(h => h.type === 'monthly').sort((a, b) => a.title.localeCompare(b.title));
+
     return (
         <div style={{ paddingBottom: '100px' }}>
             <h2 style={{ fontSize: '1.8rem', marginBottom: '2rem' }}>Statistics</h2>
@@ -23,9 +26,34 @@ export default function Stats() {
                     No stats available yet.
                 </div>
             ) : (
-                <div style={{ display: 'grid', gap: '1rem' }}>
-                    {habits.map(habit => <HabitStatsCard key={habit.id} habit={habit} />)}
-                </div>
+                <>
+                    {dailyHabits.length > 0 && (
+                        <section style={{ marginBottom: '2rem' }}>
+                            <h3 style={{ marginBottom: '1rem', opacity: 0.8 }}>Daily Goals</h3>
+                            <div style={{ display: 'grid', gap: '1rem' }}>
+                                {dailyHabits.map(habit => <HabitStatsCard key={habit.id} habit={habit} />)}
+                            </div>
+                        </section>
+                    )}
+
+                    {weeklyHabits.length > 0 && (
+                        <section style={{ marginBottom: '2rem' }}>
+                            <h3 style={{ marginBottom: '1rem', opacity: 0.8 }}>Weekly Goals</h3>
+                            <div style={{ display: 'grid', gap: '1rem' }}>
+                                {weeklyHabits.map(habit => <HabitStatsCard key={habit.id} habit={habit} />)}
+                            </div>
+                        </section>
+                    )}
+
+                    {monthlyHabits.length > 0 && (
+                        <section style={{ marginBottom: '2rem' }}>
+                            <h3 style={{ marginBottom: '1rem', opacity: 0.8 }}>Monthly Goals</h3>
+                            <div style={{ display: 'grid', gap: '1rem' }}>
+                                {monthlyHabits.map(habit => <HabitStatsCard key={habit.id} habit={habit} />)}
+                            </div>
+                        </section>
+                    )}
+                </>
             )}
         </div>
     );

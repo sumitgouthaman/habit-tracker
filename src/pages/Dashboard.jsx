@@ -43,9 +43,9 @@ export default function Dashboard() {
     return habit.logs?.[key] || null;
   };
 
-  const dailyHabits = habits.filter(h => h.type === 'daily');
-  const weeklyHabits = habits.filter(h => h.type === 'weekly');
-  const monthlyHabits = habits.filter(h => h.type === 'monthly');
+  const dailyHabits = habits.filter(h => h.type === 'daily').sort((a, b) => a.title.localeCompare(b.title));
+  const weeklyHabits = habits.filter(h => h.type === 'weekly').sort((a, b) => a.title.localeCompare(b.title));
+  const monthlyHabits = habits.filter(h => h.type === 'monthly').sort((a, b) => a.title.localeCompare(b.title));
 
   return (
     <div style={{ paddingBottom: '100px' }} onClick={() => setShowProfileMenu(false)}>
