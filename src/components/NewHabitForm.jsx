@@ -4,17 +4,21 @@ import { useAuth } from '../context/AuthContext';
 import { useHabits } from '../context/HabitContext';
 import { X } from 'lucide-react';
 
+import { MAX_HABITS } from '../lib/constants';
+
 export default function NewHabitForm({ onClose }) {
     const { user } = useAuth();
-    const { addHabitToState } = useHabits();
+    const { addHabitToState, habits } = useHabits();
     const [title, setTitle] = useState('');
     const [type, setType] = useState('daily');
     const [targetCount, setTargetCount] = useState(1);
     const [submitting, setSubmitting] = useState(false);
 
+    const isLimitReached = habits.length >= MAX_HABITS;
+
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!title.trim() || submitting) return;
+        if (!title.trim() || submitting || isLimitReached) return;
 
         setSubmitting(true);
         try {
@@ -65,59 +69,34 @@ export default function NewHabitForm({ onClose }) {
                     </button>
                 </div>
 
-                <form onSubmit={handleSubmit}>
-                    <div style={{ marginBottom: '1rem' }}>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem' }}>Title</label>
-                        <input
-                            type="text"
-                            required
-                            autoFocus
-                            maxLength={50}
-                            placeholder="e.g. Read 30 mins"
-                            value={title}
-                            onChange={(e) => setTitle(e.target.value)}
-                            style={{
-                                width: '100%',
-                                padding: '0.8rem',
-                                background: 'rgba(0,0,0,0.2)',
-                                border: '1px solid var(--glass-border)',
-                                borderRadius: '8px',
-                                color: 'white',
-                                outline: 'none',
-                                boxSizing: 'border-box'
-                            }}
-                        />
+                {/* Show limit warning only if not currently submitting (to avoid flicker on success) */}
+                {isLimitReached && !submitting ? (
+                    <div style={{
+                        background: 'rgba(239, 68, 68, 0.2)',
+                        border: '1px solid rgba(239, 68, 68, 0.5)',
+                        color: '#fca5a5',
+                        padding: '1.5rem',
+                        borderRadius: '8px',
+                        textAlign: 'center',
+                        fontSize: '1rem'
+                    }}>
+                        <p style={{ margin: 0, marginBottom: '0.5rem', fontWeight: 'bold' }}>Limit Reached</p>
+                        <p style={{ margin: 0, opacity: 0.9 }}>
+                            You have reached the maximum limit of {MAX_HABITS} habits.
+                        </p>
                     </div>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-                        <div>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem' }}>Type</label>
-                            <select
-                                value={type}
-                                onChange={(e) => setType(e.target.value)}
-                                style={{
-                                    width: '100%',
-                                    padding: '0.8rem',
-                                    background: 'rgba(0,0,0,0.2)',
-                                    border: '1px solid var(--glass-border)',
-                                    borderRadius: '8px',
-                                    color: 'white',
-                                    outline: 'none',
-                                    boxSizing: 'border-box'
-                                }}
-                            >
-                                <option value="daily">Daily</option>
-                                <option value="weekly">Weekly</option>
-                                <option value="monthly">Monthly</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem' }}>Target</label>
+                ) : (
+                    <form onSubmit={handleSubmit}>
+                        <div style={{ marginBottom: '1rem' }}>
+                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem' }}>Title</label>
                             <input
-                                type="number"
-                                min="1"
-                                value={targetCount}
-                                onChange={(e) => setTargetCount(e.target.value)}
+                                type="text"
+                                required
+                                autoFocus
+                                maxLength={50}
+                                placeholder="e.g. Read 30 mins"
+                                value={title}
+                                onChange={(e) => setTitle(e.target.value)}
                                 style={{
                                     width: '100%',
                                     padding: '0.8rem',
@@ -130,34 +109,77 @@ export default function NewHabitForm({ onClose }) {
                                 }}
                             />
                         </div>
-                    </div>
 
-                    <div style={{ marginBottom: '1.5rem' }}>
-                        <label htmlFor="increments" style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: 'var(--color-text-dim)' }}>
-                            Custom Increments (optional, comma separated, e.g. 5, 10, 20)
-                        </label>
-                        <input
-                            id="increments"
-                            type="text"
-                            placeholder="Leave empty for default (+1)"
-                            name="increments"
-                            style={{
-                                width: '100%',
-                                padding: '0.8rem',
-                                background: 'rgba(0,0,0,0.2)',
-                                border: '1px solid var(--glass-border)',
-                                borderRadius: '8px',
-                                color: 'white',
-                                outline: 'none',
-                                boxSizing: 'border-box'
-                            }}
-                        />
-                    </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem' }}>Type</label>
+                                <select
+                                    value={type}
+                                    onChange={(e) => setType(e.target.value)}
+                                    style={{
+                                        width: '100%',
+                                        padding: '0.8rem',
+                                        background: 'rgba(0,0,0,0.2)',
+                                        border: '1px solid var(--glass-border)',
+                                        borderRadius: '8px',
+                                        color: 'white',
+                                        outline: 'none',
+                                        boxSizing: 'border-box'
+                                    }}
+                                >
+                                    <option value="daily">Daily</option>
+                                    <option value="weekly">Weekly</option>
+                                    <option value="monthly">Monthly</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem' }}>Target</label>
+                                <input
+                                    type="number"
+                                    min="1"
+                                    value={targetCount}
+                                    onChange={(e) => setTargetCount(e.target.value)}
+                                    style={{
+                                        width: '100%',
+                                        padding: '0.8rem',
+                                        background: 'rgba(0,0,0,0.2)',
+                                        border: '1px solid var(--glass-border)',
+                                        borderRadius: '8px',
+                                        color: 'white',
+                                        outline: 'none',
+                                        boxSizing: 'border-box'
+                                    }}
+                                />
+                            </div>
+                        </div>
 
-                    <button type="submit" className="btn" style={{ width: '100%' }} disabled={submitting}>
-                        {submitting ? 'Creating...' : 'Create Habit'}
-                    </button>
-                </form>
+                        <div style={{ marginBottom: '1.5rem' }}>
+                            <label htmlFor="increments" style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: 'var(--color-text-dim)' }}>
+                                Custom Increments (optional, comma separated, e.g. 5, 10, 20)
+                            </label>
+                            <input
+                                id="increments"
+                                type="text"
+                                placeholder="Leave empty for default (+1)"
+                                name="increments"
+                                style={{
+                                    width: '100%',
+                                    padding: '0.8rem',
+                                    background: 'rgba(0,0,0,0.2)',
+                                    border: '1px solid var(--glass-border)',
+                                    borderRadius: '8px',
+                                    color: 'white',
+                                    outline: 'none',
+                                    boxSizing: 'border-box'
+                                }}
+                            />
+                        </div>
+
+                        <button type="submit" className="btn" style={{ width: '100%' }} disabled={submitting}>
+                            {submitting ? 'Creating...' : 'Create Habit'}
+                        </button>
+                    </form>
+                )}
             </div>
         </div>
     );
