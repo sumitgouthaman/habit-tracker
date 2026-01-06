@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { auth } from '../lib/firebase';
 import { useHabits } from '../context/HabitContext';
@@ -7,7 +7,7 @@ import HabitCard from '../components/HabitCard';
 import NewHabitForm from '../components/NewHabitForm';
 import EditHabitForm from '../components/EditHabitForm';
 import { format, addDays, subDays, isSameDay } from 'date-fns';
-import { Plus, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, ChevronLeft, ChevronRight, Calendar, ChevronsRight } from 'lucide-react';
 
 export default function Dashboard() {
   const { user, loading: authLoading } = useAuth();
@@ -17,6 +17,14 @@ export default function Dashboard() {
   const [editingHabit, setEditingHabit] = useState(null);
 
   const [currentDate, setCurrentDate] = useState(new Date());
+
+  const dateInputRef = useRef(null);
+
+  const handleDateChange = (e) => {
+    if (e.target.valueAsDate) {
+      setCurrentDate(e.target.valueAsDate);
+    }
+  };
 
   const handlePrevDay = () => setCurrentDate(prev => subDays(prev, 1));
   const handleNextDay = () => setCurrentDate(prev => addDays(prev, 1));
@@ -55,23 +63,57 @@ export default function Dashboard() {
         alignItems: 'center',
         marginBottom: '2rem'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <button onClick={(e) => { e.stopPropagation(); handlePrevDay(); }} className="btn-secondary" style={{ padding: '0.4rem', border: 'none' }}>
             <ChevronLeft size={24} />
           </button>
 
-          <div>
-            <h2 style={{ fontSize: '1.8rem', lineHeight: '1.2' }}>
-              {isToday ? 'Today' : format(currentDate, 'MMM do')}
-            </h2>
-            <div style={{ color: 'var(--color-text-dim)', fontSize: '0.9rem' }}>
-              {format(currentDate, 'EEEE')}
+          <div
+            className="date-picker-trigger"
+            onClick={() => dateInputRef.current?.showPicker()}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <h2 style={{ fontSize: '1.4rem', lineHeight: '1.2', margin: 0 }}>
+                {isToday ? 'Today' : format(currentDate, 'MMM do')}
+              </h2>
+              <Calendar size={16} style={{ opacity: 0.6 }} />
             </div>
+            <div style={{ color: 'var(--color-text-dim)', fontSize: '0.8rem' }}>
+              {format(currentDate, 'yyyy')} {format(currentDate, 'EEEE')}
+            </div>
+            {/* Hidden date input for the picker */}
+            <input
+              type="date"
+              ref={dateInputRef}
+              style={{
+                position: 'absolute',
+                opacity: 0,
+                pointerEvents: 'none',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: '100%',
+                zIndex: -1
+              }}
+              value={format(currentDate, 'yyyy-MM-dd')}
+              onChange={handleDateChange}
+            />
           </div>
 
           <button onClick={(e) => { e.stopPropagation(); handleNextDay(); }} className="btn-secondary" style={{ padding: '0.4rem', border: 'none' }}>
             <ChevronRight size={24} />
           </button>
+
+          {!isToday && (
+            <button
+              onClick={() => setCurrentDate(new Date())}
+              className="btn-secondary"
+              style={{ padding: '0.4rem', border: 'none', marginLeft: '0.2rem' }}
+              title="Go to Today"
+            >
+              <ChevronsRight size={24} />
+            </button>
+          )}
         </div>
 
         {/* Profile */}

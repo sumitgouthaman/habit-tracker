@@ -104,9 +104,27 @@ h6 {
   color: var(--color-primary);
 }
 
-.btn-secondary:hover {
+
+.date-picker-trigger {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-md);
+  transition: background-color 0.2s;
+}
+
+.date-picker-trigger:hover {
   background-color: rgba(255, 255, 255, 0.05);
 }
+
+.date-picker-trigger:active {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
 
 /* Scrollbar */
 ::-webkit-scrollbar {
