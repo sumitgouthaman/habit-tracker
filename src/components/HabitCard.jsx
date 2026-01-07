@@ -24,30 +24,26 @@ export default function HabitCard({ habit, log, date, onEdit }) {
     const target = habit.targetCount || 1;
     const isCompleted = currentValue >= target;
 
-    const handleUpdate = async (newValue) => {
-        if (loading) return;
+    // Debounce logic
+    useEffect(() => {
+        // Don't update if it matches the initial prop value (avoid initial sync trigger)
+        if (log && currentValue === log.value) return;
+        if (!log && currentValue === 0) return;
 
+        const timer = setTimeout(() => {
+            updateLog(user.uid, habit.id, date, currentValue, target, habit.type).catch(err => {
+                console.error("Failed to update log:", err);
+                // Optional: Rollback on error, but tricky with potential race conditions
+            });
+        }, 1000); // 1 second debounce
+
+        return () => clearTimeout(timer);
+    }, [currentValue, user.uid, habit.id, date, target, habit.type]);
+
+    const handleUpdate = (newValue) => {
         // Prevent going below 0
         if (newValue < 0) newValue = 0;
-
-        const oldValue = currentValue;
         setCurrentValue(newValue);
-        setLoading(true);
-
-        try {
-            const isNowCompleted = newValue >= target;
-            const wasCompleted = oldValue >= target;
-
-            await updateLog(user.uid, habit.id, date, newValue, target, habit.type);
-            // Optimistic stat updates are no longer needed as stats are calculated on-the-fly from logs
-            // and the logs update will come back via the realtime listener.
-        } catch (error) {
-            console.error("Failed to update log:", error);
-            setCurrentValue(oldValue); // Rollback
-            alert("Error updating habit: " + error.message);
-        } finally {
-            setLoading(false);
-        }
     };
 
     const progress = Math.min((currentValue / target) * 100, 100);
@@ -87,7 +83,6 @@ export default function HabitCard({ habit, log, date, onEdit }) {
                         // Case 1: Binary Task (Checkmark)
                         <button
                             onClick={(e) => { e.stopPropagation(); handleUpdate(isCompleted ? 0 : 1); }}
-                            disabled={loading}
                             style={{
                                 width: '44px',
                                 height: '44px',
@@ -111,7 +106,6 @@ export default function HabitCard({ habit, log, date, onEdit }) {
                             <button
                                 key={idx}
                                 onClick={(e) => { e.stopPropagation(); handleUpdate(currentValue + inc); }}
-                                disabled={loading}
                                 style={{
                                     minWidth: '40px',
                                     height: '40px',
@@ -123,10 +117,9 @@ export default function HabitCard({ habit, log, date, onEdit }) {
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
-                                    cursor: loading ? 'default' : 'pointer',
+                                    cursor: 'pointer',
                                     fontWeight: '600',
-                                    fontSize: '0.9rem',
-                                    opacity: loading ? 0.5 : 1
+                                    fontSize: '0.9rem'
                                 }}
                             >
                                 +{inc}
