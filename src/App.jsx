@@ -50,7 +50,6 @@ function PrivateLayout({ children }) {
 }
 
 import { HabitProvider } from './context/HabitContext';
-import ReloadPrompt from './components/ReloadPrompt';
 
 function App() {
   return (
@@ -78,7 +77,6 @@ function App() {
           } />
 
         </Routes>
-        <ReloadPrompt />
       </HabitProvider>
     </AuthProvider>
   );
