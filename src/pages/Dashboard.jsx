@@ -21,8 +21,10 @@ export default function Dashboard() {
   const dateInputRef = useRef(null);
 
   const handleDateChange = (e) => {
-    if (e.target.valueAsDate) {
-      setCurrentDate(e.target.valueAsDate);
+    if (e.target.value) {
+      // Parse "YYYY-MM-DD" manually to ensure local time representation
+      const [year, month, day] = e.target.value.split('-').map(Number);
+      setCurrentDate(new Date(year, month - 1, day));
     }
   };
 
