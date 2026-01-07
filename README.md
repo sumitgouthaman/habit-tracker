@@ -1,8 +1,19 @@
 # Habit Tracker PWA
 
-A simple and effective Habit Tracker built with React, Vite, and Firebase. Works offline and installs as a PWA.
+A simple Habit Tracker without ads or in-app purchases. I couldn't find one that was simple and just got out the way. So I decided to vibe-code one.
 
 > Vibecoded using **Antigravity IDE**.
+
+
+| | | | |
+|:---:|:---:|:---:|:---:|
+| <img src="screenshots/main_page.png" width="200" alt="Dashboard" /> | <img src="screenshots/stats.png" width="200" alt="Stats" /> | <img src="screenshots/stats_2.png" width="200" alt="Stats 2" /> | <img src="screenshots/settings.png" width="200" alt="Settings" /> |
+
+<br />
+
+| |
+|:---:|
+| <img src="screenshots/tablet.PNG" width="600" alt="Tablet" /> |
 
 ## Features
 
@@ -37,4 +48,6 @@ A simple and effective Habit Tracker built with React, Vite, and Firebase. Works
 
 For detailed backend configuration (Security Rules, Indexes) and deployment instructions, see:
 👉 [**firebase/SETUP.md**](./firebase/SETUP.md)
+
+
 
