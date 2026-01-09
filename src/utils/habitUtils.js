@@ -1,5 +1,6 @@
 import { format, subDays, startOfWeek, subWeeks, startOfMonth, subMonths, isSameDay } from 'date-fns';
 import { getPeriodKey } from '../lib/db';
+import { MAX_STREAK_LOOKBACK_DAYS } from '../lib/constants';
 
 /**
  * Calculates the current streak for a daily habit.
@@ -50,7 +51,7 @@ export function calculateStreak(habit) {
     }
 
     // Safety break
-    let loopLimit = 365 * 10;
+    let loopLimit = MAX_STREAK_LOOKBACK_DAYS;
 
     while (loopLimit > 0) {
         const key = getPeriodKey(pointer, 'daily');

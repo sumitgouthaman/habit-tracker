@@ -1,13 +1,12 @@
 import { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, ReferenceLine } from 'recharts';
 import { getPeriodKey } from '../lib/db';
-import { getLogValue } from '../utils/habitUtils'; // Use helper
+import { getLogValue } from '../utils/habitUtils';
 import { format, subDays, subWeeks, subMonths, eachDayOfInterval, eachWeekOfInterval, eachMonthOfInterval } from 'date-fns';
 import { Check, X } from 'lucide-react';
-import { useAuth } from '../context/AuthContext'; // Keeping useAuth if needed for future, but currently unused in this logic
+import { WEEK_STARTS_ON } from '../lib/constants';
 
-export default function HabitStatsChart({ habit, range }) { // range: '7d', '30d'
-    // const { user } = useAuth(); // Unused in new logic
+export default function HabitStatsChart({ habit, range }) {
     const [data, setData] = useState([]);
 
     // NO LOADING STATE NEEDED anymore because 'habit' already has the logs!
@@ -29,7 +28,7 @@ export default function HabitStatsChart({ habit, range }) { // range: '7d', '30d
                 // Last 12 weeks
                 startDate = subWeeks(today, 11);
                 dateFmt = 'weekly';
-                allTimePoints = eachWeekOfInterval({ start: startDate, end: endDate }, { weekStartsOn: 1 });
+                allTimePoints = eachWeekOfInterval({ start: startDate, end: endDate }, { weekStartsOn: WEEK_STARTS_ON });
                 formatXAxis = (d) => format(d, 'MMM d');
                 formatTooltip = (d) => `Week of ${format(d, 'MMM d')}`;
                 formatShort = (d) => format(d, 'd');
@@ -72,7 +71,7 @@ export default function HabitStatsChart({ habit, range }) { // range: '7d', '30d
         };
 
         calculateChartData();
-    }, [habit, range]); // Re-run when habit (logs) or range changes
+    }, [habit, range]);
 
     if (!data || data.length === 0) {
         return <div style={{ height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-dim)' }}>No data available.</div>;

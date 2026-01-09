@@ -13,6 +13,7 @@ import {
 } from "firebase/firestore";
 import { db } from "./firebase";
 import { format, startOfWeek, startOfMonth } from "date-fns";
+import { FIRESTORE_BATCH_SIZE, WEEK_STARTS_ON } from "./constants";
 
 const USERS_COLLECTION = "users";
 const HABITS_COLLECTION = "habits";
@@ -20,9 +21,10 @@ const HABITS_COLLECTION = "habits";
 // --- Helpers ---
 
 // Deterministic ID generator (Kept for compatibility, mostly used for keys now)
+// Uses WEEK_STARTS_ON constant for consistent weekly key generation
 export const getPeriodKey = (date, type) => {
     if (type === 'weekly') {
-        return format(startOfWeek(date, { weekStartsOn: 1 }), 'yyyy-MM-dd'); // Monday
+        return format(startOfWeek(date, { weekStartsOn: WEEK_STARTS_ON }), 'yyyy-MM-dd');
     }
     if (type === 'monthly') {
         return format(startOfMonth(date), 'yyyy-MM');
@@ -130,7 +132,6 @@ export async function importUserData(userId, data) {
 
     const batch = writeBatch(db);
     let count = 0;
-    const BATCH_SIZE = 500;
 
     // Helper to recursively convert ISO date strings (from JSON) back to Firestore Timestamps/Dates
     // We specifically look for known timestamp fields or general date-looking strings?
@@ -214,7 +215,7 @@ export async function importUserData(userId, data) {
 
         count++;
         // Commit if batch is full (rare for personal use, but good practice)
-        if (count >= BATCH_SIZE) {
+        if (count >= FIRESTORE_BATCH_SIZE) {
             await batch.commit();
             count = 0;
             // batch is effectively "used up", need new one? 

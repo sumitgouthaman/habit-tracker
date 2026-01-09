@@ -1,5 +1,6 @@
 import { useRegisterSW } from 'virtual:pwa-register/react';
 import { RefreshCw, X } from 'lucide-react';
+import { SW_UPDATE_CHECK_INTERVAL_MS } from '../lib/constants';
 
 export default function UpdatePrompt() {
     const {
@@ -7,9 +8,9 @@ export default function UpdatePrompt() {
         updateServiceWorker
     } = useRegisterSW({
         onRegistered(r) {
-            // Check for updates every hour
+            // Check for updates periodically
             if (r) {
-                setInterval(() => r.update(), 60 * 60 * 1000);
+                setInterval(() => r.update(), SW_UPDATE_CHECK_INTERVAL_MS);
             }
         }
     });

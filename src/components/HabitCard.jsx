@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useState, useEffect } from 'react';
 import clsx from 'clsx';
 import { format, isSameDay, differenceInHours, differenceInMinutes, endOfDay, isToday } from 'date-fns';
+import { EVENING_WARNING_HOUR, DEBOUNCE_DELAY_MS } from '../lib/constants';
 
 export default function HabitCard({ habit, log, date, onEdit }) {
     const { user } = useAuth();
@@ -35,7 +36,7 @@ export default function HabitCard({ habit, log, date, onEdit }) {
                 console.error("Failed to update log:", err);
                 // Optional: Rollback on error, but tricky with potential race conditions
             });
-        }, 1000); // 1 second debounce
+        }, DEBOUNCE_DELAY_MS);
 
         return () => clearTimeout(timer);
     }, [currentValue, user.uid, habit.id, date, target, habit.type]);
@@ -53,7 +54,7 @@ export default function HabitCard({ habit, log, date, onEdit }) {
     // Time remaining warning for incomplete daily habits after 9pm
     const now = new Date();
     const currentHour = now.getHours();
-    const isEvening = currentHour >= 21; // 9pm or later
+    const isEvening = currentHour >= EVENING_WARNING_HOUR;
     const showTimeWarning = habit.type === 'daily' && !isCompleted && isEvening && isToday(date);
 
     let hoursRemaining = 0;
