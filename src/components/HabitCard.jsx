@@ -1,9 +1,9 @@
-import { Check, Plus } from 'lucide-react';
+import { Check, Plus, Clock } from 'lucide-react';
 import { updateLog } from '../lib/db';
 import { useAuth } from '../context/AuthContext';
 import { useState, useEffect } from 'react';
 import clsx from 'clsx';
-import { format, isSameDay } from 'date-fns';
+import { format, isSameDay, differenceInHours, differenceInMinutes, endOfDay, isToday } from 'date-fns';
 
 export default function HabitCard({ habit, log, date, onEdit }) {
     const { user } = useAuth();
@@ -50,6 +50,20 @@ export default function HabitCard({ habit, log, date, onEdit }) {
     const multiplier = currentValue / target;
     const isOverachieved = multiplier > 1;
 
+    // Time remaining warning for incomplete daily habits after 9pm
+    const now = new Date();
+    const currentHour = now.getHours();
+    const isEvening = currentHour >= 21; // 9pm or later
+    const showTimeWarning = habit.type === 'daily' && !isCompleted && isEvening && isToday(date);
+
+    let hoursRemaining = 0;
+    let minutesRemaining = 0;
+    if (showTimeWarning) {
+        const midnight = endOfDay(now);
+        hoursRemaining = differenceInHours(midnight, now);
+        minutesRemaining = differenceInMinutes(midnight, now) % 60;
+    }
+
     return (
         <div className={clsx(
             "glass-panel",
@@ -81,7 +95,7 @@ export default function HabitCard({ habit, log, date, onEdit }) {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ flex: 1 }}>
                     <h3 style={{ fontSize: '1.1rem', marginBottom: '0.2rem' }}>{habit.title}</h3>
-                    <div style={{ fontSize: '0.85rem', color: 'var(--color-text-dim)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <div style={{ fontSize: '0.85rem', color: 'var(--color-text-dim)', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                         <span>{habit.type.charAt(0).toUpperCase() + habit.type.slice(1)} • {currentValue} / {target}</span>
                         {isOverachieved && (
                             <span style={{
@@ -94,6 +108,23 @@ export default function HabitCard({ habit, log, date, onEdit }) {
                                 boxShadow: '0 0 8px rgba(251, 191, 36, 0.4)'
                             }}>
                                 {multiplier >= 2 ? `${Math.floor(multiplier)}x` : `${Math.round(multiplier * 100)}%`}
+                            </span>
+                        )}
+                        {showTimeWarning && (
+                            <span style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                background: 'rgba(239, 68, 68, 0.2)',
+                                color: '#f87171',
+                                fontSize: '0.7rem',
+                                fontWeight: 600,
+                                padding: '2px 6px',
+                                borderRadius: '4px',
+                                border: '1px solid rgba(239, 68, 68, 0.3)'
+                            }}>
+                                <Clock size={10} />
+                                {hoursRemaining > 0 ? `${hoursRemaining}h ${minutesRemaining}m left` : `${minutesRemaining}m left`}
                             </span>
                         )}
                     </div>
