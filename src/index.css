@@ -143,3 +143,13 @@ h6 {
 ::-webkit-scrollbar-thumb:hover {
   background: #475569;
 }
+
+/* Overachievement glow animation */
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 12px rgba(251, 191, 36, 0.6), 0 0 24px rgba(251, 191, 36, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(251, 191, 36, 0.8), 0 0 40px rgba(251, 191, 36, 0.5);
+  }
+}

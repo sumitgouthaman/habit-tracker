@@ -47,6 +47,8 @@ export default function HabitCard({ habit, log, date, onEdit }) {
     };
 
     const progress = Math.min((currentValue / target) * 100, 100);
+    const multiplier = currentValue / target;
+    const isOverachieved = multiplier > 1;
 
     return (
         <div className={clsx(
@@ -66,15 +68,34 @@ export default function HabitCard({ habit, log, date, onEdit }) {
                 left: 0,
                 height: '4px',
                 width: `${progress}%`,
-                background: isCompleted ? 'var(--color-success)' : 'var(--color-primary)',
-                transition: 'width 0.5s ease-out'
+                background: isOverachieved
+                    ? 'linear-gradient(90deg, var(--color-success), #fbbf24)'
+                    : isCompleted
+                        ? 'var(--color-success)'
+                        : 'var(--color-primary)',
+                transition: 'width 0.5s ease-out',
+                boxShadow: isOverachieved ? '0 0 12px rgba(251, 191, 36, 0.6), 0 0 24px rgba(251, 191, 36, 0.3)' : 'none',
+                animation: isOverachieved ? 'pulse-glow 2s ease-in-out infinite' : 'none'
             }} />
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ flex: 1 }}>
                     <h3 style={{ fontSize: '1.1rem', marginBottom: '0.2rem' }}>{habit.title}</h3>
-                    <div style={{ fontSize: '0.85rem', color: 'var(--color-text-dim)' }}>
-                        {habit.type.charAt(0).toUpperCase() + habit.type.slice(1)} • {currentValue} / {target}
+                    <div style={{ fontSize: '0.85rem', color: 'var(--color-text-dim)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <span>{habit.type.charAt(0).toUpperCase() + habit.type.slice(1)} • {currentValue} / {target}</span>
+                        {isOverachieved && (
+                            <span style={{
+                                background: 'linear-gradient(135deg, #fbbf24, #f59e0b)',
+                                color: '#000',
+                                fontSize: '0.7rem',
+                                fontWeight: 700,
+                                padding: '2px 6px',
+                                borderRadius: '4px',
+                                boxShadow: '0 0 8px rgba(251, 191, 36, 0.4)'
+                            }}>
+                                {multiplier >= 2 ? `${Math.floor(multiplier)}x` : `${Math.round(multiplier * 100)}%`}
+                            </span>
+                        )}
                     </div>
                 </div>
 
