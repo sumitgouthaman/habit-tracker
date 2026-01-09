@@ -11,6 +11,9 @@ import Settings from './pages/Settings';
 import { auth } from './lib/firebase';
 import { signOut } from 'firebase/auth';
 
+import OfflineIndicator from './components/OfflineIndicator';
+import UpdatePrompt from './components/UpdatePrompt';
+
 function PrivateLayout({ children }) {
   const { user, loading, isAllowed } = useAuth();
 
@@ -53,32 +56,36 @@ import { HabitProvider } from './context/HabitContext';
 
 function App() {
   return (
-    <AuthProvider>
-      <HabitProvider>
-        <Routes>
-          <Route path="/login" element={<Login />} />
+    <>
+      <OfflineIndicator />
+      <UpdatePrompt />
+      <AuthProvider>
+        <HabitProvider>
+          <Routes>
+            <Route path="/login" element={<Login />} />
 
-          <Route path="/" element={
-            <PrivateLayout>
-              <Dashboard />
-            </PrivateLayout>
-          } />
+            <Route path="/" element={
+              <PrivateLayout>
+                <Dashboard />
+              </PrivateLayout>
+            } />
 
-          <Route path="/stats" element={
-            <PrivateLayout>
-              <Stats />
-            </PrivateLayout>
-          } />
+            <Route path="/stats" element={
+              <PrivateLayout>
+                <Stats />
+              </PrivateLayout>
+            } />
 
-          <Route path="/settings" element={
-            <PrivateLayout>
-              <Settings />
-            </PrivateLayout>
-          } />
+            <Route path="/settings" element={
+              <PrivateLayout>
+                <Settings />
+              </PrivateLayout>
+            } />
 
-        </Routes>
-      </HabitProvider>
-    </AuthProvider>
+          </Routes>
+        </HabitProvider>
+      </AuthProvider>
+    </>
   );
 }
 
