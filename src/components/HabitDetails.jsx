@@ -203,28 +203,28 @@ export default function HabitDetails({ habit, onClose, onEdit, onDayClick }) {
                 </div>
 
                 {/* Content */}
-                <div style={{ flex: 1, overflowY: 'auto', padding: '0 1rem 1rem 1rem' }}>
+                <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '0 0.5rem 1rem 0.5rem' }}>
 
                     {/* Daily Calendar Grid */}
                     {habit.type === 'daily' && (
-                        <div>
+                        <div style={{ width: '100%', maxWidth: '100%' }}>
                             <div style={{
                                 display: 'grid',
-                                gridTemplateColumns: 'repeat(7, 1fr)',
-                                marginBottom: '0.5rem',
+                                gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
+                                marginBottom: '0.25rem',
                                 textAlign: 'center',
-                                fontSize: '0.8rem',
+                                fontSize: '0.75rem',
                                 color: 'var(--color-text-dim)',
                                 fontWeight: 600
                             }}>
                                 {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, i) => (
-                                    <div key={i} style={{ padding: '0.5rem 0' }}>{d}</div>
+                                    <div key={i} style={{ padding: '0.25rem 0' }}>{d}</div>
                                 ))}
                             </div>
                             <div style={{
                                 display: 'grid',
-                                gridTemplateColumns: 'repeat(7, 1fr)',
-                                gap: '6px'
+                                gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
+                                gap: '3px'
                             }}>
                                 {calendarDays.map((day, idx) => (
                                     <div
@@ -235,7 +235,7 @@ export default function HabitDetails({ habit, onClose, onEdit, onDayClick }) {
                                             flexDirection: 'column',
                                             alignItems: 'center',
                                             justifyContent: 'center',
-                                            borderRadius: '8px',
+                                            borderRadius: '6px',
                                             background: day.isCompleted
                                                 ? 'rgba(34, 197, 94, 0.2)'
                                                 : day.value > 0
@@ -244,15 +244,17 @@ export default function HabitDetails({ habit, onClose, onEdit, onDayClick }) {
                                             border: day.isToday ? '1px solid var(--color-primary)' : '1px solid transparent',
                                             opacity: day.isCurrentMonth ? 1 : 0.3,
                                             position: 'relative',
-                                            fontSize: '0.85rem',
-                                            cursor: 'pointer'
+                                            fontSize: '0.75rem',
+                                            cursor: 'pointer',
+                                            overflow: 'hidden',
+                                            minWidth: 0
                                         }}
                                         onClick={(e) => {
                                             e.stopPropagation();
                                             onDayClick(day.date);
                                         }}
                                     >
-                                        <span style={{ marginBottom: day.value > 0 ? '2px' : '0' }}>{format(day.date, 'd')}</span>
+                                        <span style={{ marginBottom: day.value > 0 ? '1px' : '0', lineHeight: 1.1 }}>{format(day.date, 'd')}</span>
 
                                         {/* Indicators */}
                                         {day.isCompleted && (
@@ -260,24 +262,25 @@ export default function HabitDetails({ habit, onClose, onEdit, onDayClick }) {
                                                 <div style={{
                                                     background: 'linear-gradient(135deg, #fbbf24, #f59e0b)',
                                                     color: '#000',
-                                                    fontSize: '0.65rem',
+                                                    fontSize: '0.6rem',
                                                     fontWeight: 700,
-                                                    padding: '1px 4px',
-                                                    borderRadius: '4px',
+                                                    padding: '1px 3px',
+                                                    borderRadius: '3px',
                                                     boxShadow: '0 0 4px rgba(251, 191, 36, 0.4)',
                                                     lineHeight: 1
                                                 }}>
                                                     {Math.floor(day.multiplier)}x
                                                 </div>
                                             ) : (
-                                                <div style={{ color: 'var(--color-success)' }}><Check size={14} strokeWidth={3} /></div>
+                                                <div style={{ color: 'var(--color-success)' }}><Check size={12} strokeWidth={3} /></div>
                                             )
                                         )}
                                         {!day.isCompleted && day.value > 0 && (
                                             <div style={{
-                                                fontSize: '0.7rem',
+                                                fontSize: '0.6rem',
                                                 fontWeight: 700,
-                                                color: 'var(--color-warning)'
+                                                color: 'var(--color-warning)',
+                                                lineHeight: 1
                                             }}>
                                                 {day.value}
                                             </div>
