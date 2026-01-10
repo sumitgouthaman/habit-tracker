@@ -1,7 +1,7 @@
 import { Check, Plus, Clock } from 'lucide-react';
 import { updateLog } from '../lib/db';
 import { useAuth } from '../context/AuthContext';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import clsx from 'clsx';
 import { format, isSameDay, differenceInHours, differenceInMinutes, endOfDay, isToday } from 'date-fns';
 import { EVENING_WARNING_HOUR, DEBOUNCE_DELAY_MS } from '../lib/constants';
@@ -50,6 +50,21 @@ export default function HabitCard({ habit, log, date, onEdit }) {
     const progress = Math.min((currentValue / target) * 100, 100);
     const multiplier = currentValue / target;
     const isOverachieved = multiplier > 1;
+    const multiplierLevel = Math.floor(multiplier); // 2, 3, 4, etc.
+
+    // Track multiplier level changes for animation
+    const prevMultiplierLevel = useRef(multiplierLevel);
+    const [isMultiplierAnimating, setIsMultiplierAnimating] = useState(false);
+
+    useEffect(() => {
+        // Trigger animation when multiplier crosses a new integer threshold
+        if (multiplierLevel > prevMultiplierLevel.current && multiplierLevel >= 2) {
+            setIsMultiplierAnimating(true);
+            const timer = setTimeout(() => setIsMultiplierAnimating(false), 600);
+            return () => clearTimeout(timer);
+        }
+        prevMultiplierLevel.current = multiplierLevel;
+    }, [multiplierLevel]);
 
     // Time remaining warning for incomplete daily habits after 9pm
     const now = new Date();
@@ -106,7 +121,10 @@ export default function HabitCard({ habit, log, date, onEdit }) {
                                 fontWeight: 700,
                                 padding: '2px 6px',
                                 borderRadius: '4px',
-                                boxShadow: '0 0 8px rgba(251, 191, 36, 0.4)'
+                                boxShadow: '0 0 8px rgba(251, 191, 36, 0.4)',
+                                transform: isMultiplierAnimating ? 'scale(1.3)' : 'scale(1)',
+                                transition: 'transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                                animation: isMultiplierAnimating ? 'badge-pop 0.6s ease-out' : 'none'
                             }}>
                                 {multiplier >= 2 ? `${Math.floor(multiplier)}x` : `${Math.round(multiplier * 100)}%`}
                             </span>

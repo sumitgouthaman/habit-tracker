@@ -146,10 +146,39 @@ h6 {
 
 /* Overachievement glow animation */
 @keyframes pulse-glow {
-  0%, 100% {
+
+  0%,
+  100% {
     box-shadow: 0 0 12px rgba(251, 191, 36, 0.6), 0 0 24px rgba(251, 191, 36, 0.3);
   }
+
   50% {
     box-shadow: 0 0 20px rgba(251, 191, 36, 0.8), 0 0 40px rgba(251, 191, 36, 0.5);
+  }
+}
+
+/* Multiplier badge pop animation */
+@keyframes badge-pop {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 8px rgba(251, 191, 36, 0.4);
+  }
+
+  30% {
+    transform: scale(1.5);
+    box-shadow: 0 0 20px rgba(251, 191, 36, 0.8), 0 0 40px rgba(251, 191, 36, 0.5);
+  }
+
+  50% {
+    transform: scale(1.2);
+  }
+
+  70% {
+    transform: scale(1.35);
+  }
+
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 8px rgba(251, 191, 36, 0.4);
   }
 }
