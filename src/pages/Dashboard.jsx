@@ -6,6 +6,7 @@ import { getPeriodKey } from '../lib/db';
 import HabitCard from '../components/HabitCard';
 import NewHabitForm from '../components/NewHabitForm';
 import EditHabitForm from '../components/EditHabitForm';
+import HabitDetails from '../components/HabitDetails';
 import { format, addDays, subDays, isSameDay } from 'date-fns';
 import { Plus, ChevronLeft, ChevronRight, Calendar, ChevronsRight } from 'lucide-react';
 
@@ -15,7 +16,7 @@ export default function Dashboard() {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showNewHabitForm, setShowNewHabitForm] = useState(false);
   const [editingHabit, setEditingHabit] = useState(null);
-
+  const [selectedHabit, setSelectedHabit] = useState(null);
   const [currentDate, setCurrentDate] = useState(new Date());
 
   const dateInputRef = useRef(null);
@@ -175,11 +176,12 @@ export default function Dashboard() {
         ) : (
           dailyHabits.map(habit => (
             <HabitCard
-              key={`${habit.id}-${format(currentDate, 'yyyy-MM-dd')}`}
+              key={`${habit.id} -${format(currentDate, 'yyyy-MM-dd')} `}
               habit={habit}
               log={getHabitLogForView(habit)}
               date={currentDate}
               onEdit={setEditingHabit}
+              onClick={() => setSelectedHabit(habit)}
             />
           ))
         )}
@@ -192,11 +194,12 @@ export default function Dashboard() {
             <h3 style={{ marginBottom: '1rem', opacity: 0.8 }}>Weekly Goals</h3>
             {weeklyHabits.map(habit => (
               <HabitCard
-                key={`${habit.id}-${format(currentDate, 'yyyy-MM-dd')}`}
+                key={`${habit.id} -${format(currentDate, 'yyyy-MM-dd')} `}
                 habit={habit}
                 log={getHabitLogForView(habit)}
                 date={currentDate}
                 onEdit={setEditingHabit}
+                onClick={() => setSelectedHabit(habit)}
               />
             ))}
           </section>
@@ -210,11 +213,12 @@ export default function Dashboard() {
             <h3 style={{ marginBottom: '1rem', opacity: 0.8 }}>Monthly Goals</h3>
             {monthlyHabits.map(habit => (
               <HabitCard
-                key={`${habit.id}-${format(currentDate, 'yyyy-MM-dd')}`}
+                key={`${habit.id} -${format(currentDate, 'yyyy-MM-dd')} `}
                 habit={habit}
                 log={getHabitLogForView(habit)}
                 date={currentDate}
                 onEdit={setEditingHabit}
+                onClick={() => setSelectedHabit(habit)}
               />
             ))}
           </section>
@@ -262,6 +266,23 @@ export default function Dashboard() {
               // No-op for local state in this new architecture, 
               // as Firestore listener in HabitContext will auto-update 'habits' prop
               // which re-renders this component.
+            }}
+          />
+        )
+      }
+
+      {
+        selectedHabit && (
+          <HabitDetails
+            habit={selectedHabit}
+            onClose={() => setSelectedHabit(null)}
+            onEdit={(habit) => {
+              setSelectedHabit(null);
+              setEditingHabit(habit);
+            }}
+            onDayClick={(date) => {
+              setCurrentDate(date);
+              setSelectedHabit(null);
             }}
           />
         )

@@ -6,7 +6,7 @@ import clsx from 'clsx';
 import { format, isSameDay, differenceInHours, differenceInMinutes, endOfDay, isToday } from 'date-fns';
 import { EVENING_WARNING_HOUR, DEBOUNCE_DELAY_MS } from '../lib/constants';
 
-export default function HabitCard({ habit, log, date, onEdit }) {
+export default function HabitCard({ habit, log, date, onEdit, onClick }) {
     const { user } = useAuth();
     const [loading, setLoading] = useState(false);
 
@@ -85,7 +85,7 @@ export default function HabitCard({ habit, log, date, onEdit }) {
             "glass-panel",
             "transition-all duration-300",
             isCompleted ? "border-green-500/30 bg-green-500/10" : "hover:bg-white/5"
-        )} onClick={() => onEdit && onEdit(habit)} style={{
+        )} onClick={() => onClick && onClick(habit)} style={{
             padding: '1.25rem',
             marginBottom: '1rem',
             position: 'relative',
