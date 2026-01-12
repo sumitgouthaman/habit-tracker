@@ -73,7 +73,7 @@ export default function Dashboard() {
 
           <div
             className="date-picker-trigger"
-            onClick={() => dateInputRef.current?.showPicker()}
+            onClick={() => dateInputRef.current?.showPicker?.()}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <h2 style={{ fontSize: '1.4rem', lineHeight: '1.2', margin: 0 }}>
@@ -84,19 +84,19 @@ export default function Dashboard() {
             <div style={{ color: 'var(--color-text-dim)', fontSize: '0.8rem' }}>
               {format(currentDate, 'yyyy')} {format(currentDate, 'EEEE')}
             </div>
-            {/* Hidden date input for the picker */}
+            {/* Date input - positioned over trigger for iOS compatibility */}
             <input
               type="date"
               ref={dateInputRef}
               style={{
                 position: 'absolute',
                 opacity: 0,
-                pointerEvents: 'none',
                 top: 0,
                 left: 0,
                 width: '100%',
                 height: '100%',
-                zIndex: -1
+                zIndex: 1,
+                cursor: 'pointer'
               }}
               value={format(currentDate, 'yyyy-MM-dd')}
               onChange={handleDateChange}
