@@ -27,26 +27,19 @@ export default function HabitCard({ habit, log, date, onEdit, onClick }) {
     const target = habit.targetCount || 1;
     const isCompleted = currentValue >= target;
 
-    // Debounce logic
-    useEffect(() => {
-        // Don't update if it matches the initial prop value (avoid initial sync trigger)
-        if (log && currentValue === log.value) return;
-        if (!log && currentValue === 0) return;
-
-        const timer = setTimeout(() => {
-            updateLog(user.uid, habit.id, date, currentValue, target, habit.type).catch(err => {
-                console.error("Failed to update log:", err);
-                // Optional: Rollback on error, but tricky with potential race conditions
-            });
-        }, DEBOUNCE_DELAY_MS);
-
-        return () => clearTimeout(timer);
-    }, [currentValue, user.uid, habit.id, date, target, habit.type]);
+    // Save to database - called directly on user action
+    const saveUpdate = (newValue) => {
+        updateLog(user.uid, habit.id, date, newValue, target, habit.type).catch(err => {
+            console.error("Failed to update log:", err);
+        });
+    };
 
     const handleUpdate = (newValue) => {
         // Prevent going below 0
         if (newValue < 0) newValue = 0;
         setCurrentValue(newValue);
+        // Save immediately instead of debouncing
+        saveUpdate(newValue);
     };
 
     const progress = Math.min((currentValue / target) * 100, 100);
