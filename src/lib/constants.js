@@ -10,3 +10,4 @@ export const SW_UPDATE_CHECK_INTERVAL_MS = 60 * 60 * 1000; // Check for SW updat
 
 // Config
 export const WEEK_STARTS_ON = 1; // 0 = Sunday, 1 = Monday
+export const STREAK_MILESTONES = [7, 30, 50, 100, 150, 200, 365]; // Days to celebrate

@@ -5,8 +5,10 @@ import { MAX_STREAK_LOOKBACK_DAYS } from '../lib/constants';
 /**
  * Calculates the current streak for a daily habit.
  * Iterates backwards from today (or yesterday) checking for completion.
+ * @param {Object} habit - The habit object with logs
+ * @param {boolean} assumeTodayComplete - If true, assume today is completed (for optimistic UI)
  */
-export function calculateStreak(habit) {
+export function calculateStreak(habit, assumeTodayComplete = false) {
     if (habit.type !== 'daily') return 0; // Streaks mostly make sense for daily habits
 
     const logs = habit.logs || {};
@@ -65,16 +67,18 @@ export function calculateStreak(habit) {
         break;
     }
 
-    return calculateDailyStreakSimple(logs);
+    return calculateDailyStreakSimple(logs, assumeTodayComplete);
 }
 
-function calculateDailyStreakSimple(logs) {
+function calculateDailyStreakSimple(logs, assumeTodayComplete = false) {
     let streak = 0;
     let pointer = new Date(); // Start Today
 
     // 1. Check Today
     const todayKey = getPeriodKey(pointer, 'daily');
-    if (logs[todayKey]?.completed) {
+    const todayIsComplete = assumeTodayComplete || logs[todayKey]?.completed;
+
+    if (todayIsComplete) {
         streak++;
         pointer = subDays(pointer, 1);
     } else {
