@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState, useCallback } from "rea
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { auth, db } from "../lib/firebase";
 import { collection, query, limit, getDocs } from "firebase/firestore";
-import { isGuestMode, setGuestMode as setGuestModeStorage } from "../lib/localDb";
+import { isGuestMode, setGuestMode as setGuestModeStorage, clearLocalData } from "../lib/localDb";
 
 const AuthContext = createContext();
 
@@ -30,10 +30,15 @@ export function AuthProvider({ children }) {
                     const q = query(collection(db, 'users', currentUser.uid, 'habits'), limit(1));
                     await getDocs(q);
                     setIsAllowed(true);
+
+                    // User passed allowlist check - NOW it's safe to clear local data
+                    clearLocalData();
                 } catch (error) {
                     console.error("Access check error:", error);
                     if (error.code === 'permission-denied') {
                         setIsAllowed(false);
+                        // DON'T clear local data - user will be logged out
+                        // and they should keep their local habits
                         // Auto-logout after showing message briefly
                         setTimeout(() => {
                             signOut(auth);
@@ -71,4 +76,5 @@ export function AuthProvider({ children }) {
 export function useAuth() {
     return useContext(AuthContext);
 }
+
 

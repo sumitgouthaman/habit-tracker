@@ -3,7 +3,7 @@ import { auth } from '../lib/firebase';
 import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { hasLocalData, getLocalHabitsForSync, clearLocalData, syncLocalToFirebase } from '../lib/storage';
+import { hasLocalData, getLocalHabitsForSync, syncLocalToFirebase } from '../lib/storage';
 import * as firebaseDb from '../lib/db';
 
 export default function Login() {
@@ -49,8 +49,8 @@ export default function Login() {
                     }
                 }
 
-                // Clear local storage after sync attempt
-                clearLocalData();
+                // Note: Don't clear local data here - AuthContext will clear it
+                // only after confirming user passes allowlist check
                 setSyncing(false);
             }
 
