@@ -1,7 +1,8 @@
-import { createContext, useContext, useEffect, useState } from "react";
-import { onAuthStateChanged } from "firebase/auth";
+import { createContext, useContext, useEffect, useState, useCallback } from "react";
+import { onAuthStateChanged, signOut } from "firebase/auth";
 import { auth, db } from "../lib/firebase";
 import { collection, query, limit, getDocs } from "firebase/firestore";
+import { isGuestMode, setGuestMode as setGuestModeStorage } from "../lib/localDb";
 
 const AuthContext = createContext();
 
@@ -9,12 +10,21 @@ export function AuthProvider({ children }) {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
     const [isAllowed, setIsAllowed] = useState(true); // Default to true until proven false
+    const [isGuest, setIsGuest] = useState(() => isGuestMode());
+
+    const setGuestMode = useCallback((value) => {
+        setIsGuest(value);
+        setGuestModeStorage(value);
+    }, []);
 
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
             setUser(currentUser);
 
             if (currentUser) {
+                // Clear guest mode when user logs in
+                setGuestMode(false);
+
                 // Probe read to check if user is allowed
                 try {
                     const q = query(collection(db, 'users', currentUser.uid, 'habits'), limit(1));
@@ -24,9 +34,12 @@ export function AuthProvider({ children }) {
                     console.error("Access check error:", error);
                     if (error.code === 'permission-denied') {
                         setIsAllowed(false);
+                        // Auto-logout after showing message briefly
+                        setTimeout(() => {
+                            signOut(auth);
+                        }, 3000);
                     } else {
-                        // For other errors (offline etc), assume allowed for now so we don't block valid users unnecessarily
-                        // or handles as needed. But permission-denied is the specific target.
+                        // For other errors (offline etc), assume allowed for now
                         setIsAllowed(true);
                     }
                 }
@@ -38,12 +51,14 @@ export function AuthProvider({ children }) {
         });
 
         return () => unsubscribe();
-    }, []);
+    }, [setGuestMode]);
 
     const value = {
         user,
         loading,
-        isAllowed
+        isAllowed,
+        isGuest,
+        setGuestMode
     };
 
     return (
@@ -56,3 +71,4 @@ export function AuthProvider({ children }) {
 export function useAuth() {
     return useContext(AuthContext);
 }
+

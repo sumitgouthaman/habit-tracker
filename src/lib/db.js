@@ -36,15 +36,16 @@ export const getPeriodKey = (date, type) => {
 
 export async function createHabit(userId, habitData) {
     // habitData should have: title, type ('daily', 'weekly', 'monthly'), targetCount
+    // Optionally can include logs for sync scenarios
     const newHabitRef = doc(collection(db, USERS_COLLECTION, userId, HABITS_COLLECTION));
 
     await setDoc(newHabitRef, {
         ...habitData,
         id: newHabitRef.id,
-        // userId: userId, // REMOVED: userId is inferred from auth/path
         createdAt: serverTimestamp(),
-        archived: false,
-        logs: {} // Initialize empty logs map
+        archived: habitData.archived || false,
+        // Preserve logs if provided (for sync), otherwise initialize empty
+        logs: habitData.logs || {}
     });
 
     return newHabitRef.id;

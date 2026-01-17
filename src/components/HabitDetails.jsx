@@ -19,7 +19,7 @@ import {
     eachWeekOfInterval
 } from 'date-fns';
 import { ChevronLeft, ChevronRight, X, Edit, Check, RotateCcw } from 'lucide-react';
-import { getPeriodKey } from '../lib/db';
+import { getPeriodKey } from '../lib/storage';
 import { getLogValue } from '../utils/habitUtils';
 import { WEEK_STARTS_ON } from '../lib/constants';
 import clsx from 'clsx';

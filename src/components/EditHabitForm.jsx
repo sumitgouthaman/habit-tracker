@@ -1,12 +1,9 @@
 import { useState } from 'react';
-import { updateHabit, updateLog, deleteHabit } from '../lib/db';
-import { useAuth } from '../context/AuthContext';
 import { useHabits } from '../context/HabitContext';
 import { X, Trash2 } from 'lucide-react';
 
 export default function EditHabitForm({ habit, log, date, onClose, onLogUpdate }) {
-    const { user } = useAuth();
-    const { updateHabitInState, removeHabitFromState } = useHabits();
+    const { updateHabitInState, removeHabitFromState, storage } = useHabits();
 
     const [title, setTitle] = useState(habit.title);
     const [targetCount, setTargetCount] = useState(habit.targetCount);
@@ -39,14 +36,14 @@ export default function EditHabitForm({ habit, log, date, onClose, onLogUpdate }
                 increments
             };
 
-            await updateHabit(user.uid, habit.id, updates);
+            await storage.updateHabit(habit.id, updates);
             updateHabitInState(habit.id, updates);
 
             // 3. Update Current Log (Manual Override)
             // We only update the log if the user actually clicked save.
             // We calculate 'completed' based on the NEW target count.
             const val = parseInt(currentValue);
-            await updateLog(user.uid, habit.id, date, val, updates.targetCount, habit.type);
+            await storage.updateLog(habit.id, date, val, updates.targetCount, habit.type);
 
             // Optimistic update for Dashboard
             if (onLogUpdate) {
@@ -72,7 +69,7 @@ export default function EditHabitForm({ habit, log, date, onClose, onLogUpdate }
 
         setSubmitting(true);
         try {
-            await deleteHabit(user.uid, habit.id);
+            await storage.deleteHabit(habit.id);
             removeHabitFromState(habit.id);
             onClose();
         } catch (err) {

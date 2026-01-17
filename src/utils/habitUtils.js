@@ -1,5 +1,5 @@
 import { format, subDays, startOfWeek, subWeeks, startOfMonth, subMonths, isSameDay } from 'date-fns';
-import { getPeriodKey } from '../lib/db';
+import { getPeriodKey } from '../lib/storage';
 import { MAX_STREAK_LOOKBACK_DAYS } from '../lib/constants';
 
 /**

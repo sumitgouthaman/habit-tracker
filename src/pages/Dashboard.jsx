@@ -1,17 +1,18 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { auth } from '../lib/firebase';
-import { useHabits } from '../context/HabitContext';
-import { getPeriodKey } from '../lib/db';
+import { useHabits, getPeriodKey } from '../context/HabitContext';
+import { useNavigate } from 'react-router-dom';
 import HabitCard from '../components/HabitCard';
 import NewHabitForm from '../components/NewHabitForm';
 import EditHabitForm from '../components/EditHabitForm';
 import HabitDetails from '../components/HabitDetails';
 import { format, addDays, subDays, isSameDay } from 'date-fns';
-import { Plus, ChevronLeft, ChevronRight, Calendar, ChevronsRight } from 'lucide-react';
+import { Plus, ChevronLeft, ChevronRight, Calendar, ChevronsRight, User } from 'lucide-react';
 
 export default function Dashboard() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, isGuest } = useAuth();
+  const navigate = useNavigate();
   const { habits, loading: habitsLoading } = useHabits();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showNewHabitForm, setShowNewHabitForm] = useState(false);
@@ -131,8 +132,8 @@ export default function Dashboard() {
             {user?.photoURL ? (
               <img src={user.photoURL} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             ) : (
-              <div style={{ width: '100%', height: '100%', background: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold' }}>
-                {user?.email?.[0].toUpperCase()}
+              <div style={{ width: '100%', height: '100%', background: isGuest ? 'var(--glass-bg)' : 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold' }}>
+                {isGuest ? <User size={20} style={{ opacity: 0.7 }} /> : user?.email?.[0].toUpperCase()}
               </div>
             )}
           </button>
@@ -148,18 +149,31 @@ export default function Dashboard() {
               padding: '0.5rem',
               zIndex: 50,
               boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
-              minWidth: '120px'
+              minWidth: '140px'
             }}>
-              <button
-                onClick={handleSignOut}
-                style={{
-                  background: 'transparent', border: 'none', color: '#fca5a5',
-                  padding: '0.5rem 1rem', width: '100%', textAlign: 'left', cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem'
-                }}
-              >
-                Log Out
-              </button>
+              {isGuest ? (
+                <button
+                  onClick={() => navigate('/login')}
+                  style={{
+                    background: 'transparent', border: 'none', color: 'var(--color-primary)',
+                    padding: '0.5rem 1rem', width: '100%', textAlign: 'left', cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem'
+                  }}
+                >
+                  Sign In
+                </button>
+              ) : (
+                <button
+                  onClick={handleSignOut}
+                  style={{
+                    background: 'transparent', border: 'none', color: '#fca5a5',
+                    padding: '0.5rem 1rem', width: '100%', textAlign: 'left', cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem'
+                  }}
+                >
+                  Log Out
+                </button>
+              )}
             </div>
           )}
         </div>

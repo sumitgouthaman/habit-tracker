@@ -1,22 +1,30 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState, useMemo } from "react";
 import { useAuth } from "./AuthContext";
-import { getUserHabits, subscribeToHabits } from "../lib/db";
+import { createStorageInterface, getPeriodKey } from "../lib/storage";
 
 const HabitContext = createContext();
 
 export function HabitProvider({ children }) {
-    const { user } = useAuth();
+    const { user, isGuest } = useAuth();
     const [habits, setHabits] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
+    // Create storage interface based on user state
+    const storage = useMemo(() => {
+        return createStorageInterface(user?.uid);
+    }, [user?.uid]);
+
     useEffect(() => {
         let unsubscribe;
 
-        if (user) {
+        // Only subscribe if user is logged in OR in guest mode
+        if (user || isGuest) {
             setLoading(true);
+            setError(null);
+
             try {
-                unsubscribe = subscribeToHabits(user.uid, (data) => {
+                unsubscribe = storage.subscribeToHabits((data) => {
                     setHabits(data);
                     setLoading(false);
                 });
@@ -33,11 +41,10 @@ export function HabitProvider({ children }) {
         return () => {
             if (unsubscribe) unsubscribe();
         };
-    }, [user]);
+    }, [user, isGuest, storage]);
 
     // Legacy helpers - kept for compatibility but effectively no-ops for state 
     // since the subscription handles updates.
-    // Ideally components should just write to DB and let subscription update state.
     const addHabitToState = () => { };
     const removeHabitFromState = () => { };
     const updateHabitInState = () => { };
@@ -46,6 +53,7 @@ export function HabitProvider({ children }) {
         habits,
         loading,
         error,
+        storage, // Expose storage interface for components to use
         refreshHabits: () => { }, // No-op
         addHabitToState,
         removeHabitFromState,
@@ -62,3 +70,7 @@ export function HabitProvider({ children }) {
 export function useHabits() {
     return useContext(HabitContext);
 }
+
+// Re-export getPeriodKey for convenience
+export { getPeriodKey };
+

@@ -1,6 +1,5 @@
 import { Check, Plus, Clock } from 'lucide-react';
-import { updateLog } from '../lib/db';
-import { useAuth } from '../context/AuthContext';
+import { useHabits } from '../context/HabitContext';
 import { useState, useEffect, useRef } from 'react';
 import clsx from 'clsx';
 import { format, isSameDay, differenceInHours, differenceInMinutes, endOfDay, isToday } from 'date-fns';
@@ -9,7 +8,7 @@ import { calculateStreak } from '../utils/habitUtils';
 import ConfettiCelebration from './ConfettiCelebration';
 
 export default function HabitCard({ habit, log, date, onEdit, onClick }) {
-    const { user } = useAuth();
+    const { storage } = useHabits();
     const [loading, setLoading] = useState(false);
 
     // Optimistic UI state
@@ -29,7 +28,7 @@ export default function HabitCard({ habit, log, date, onEdit, onClick }) {
 
     // Save to database - called directly on user action
     const saveUpdate = (newValue) => {
-        updateLog(user.uid, habit.id, date, newValue, target, habit.type).catch(err => {
+        storage.updateLog(habit.id, date, newValue, target, habit.type).catch(err => {
             console.error("Failed to update log:", err);
         });
     };

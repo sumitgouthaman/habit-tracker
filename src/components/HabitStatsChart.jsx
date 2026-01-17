@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, ReferenceLine } from 'recharts';
-import { getPeriodKey } from '../lib/db';
+import { getPeriodKey } from '../lib/storage';
 import { getLogValue } from '../utils/habitUtils';
 import { format, subDays, subWeeks, subMonths, eachDayOfInterval, eachWeekOfInterval, eachMonthOfInterval } from 'date-fns';
 import { Check, X } from 'lucide-react';

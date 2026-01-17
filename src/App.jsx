@@ -15,10 +15,12 @@ import OfflineIndicator from './components/OfflineIndicator';
 import UpdatePrompt from './components/UpdatePrompt';
 
 function PrivateLayout({ children }) {
-  const { user, loading, isAllowed } = useAuth();
+  const { user, loading, isAllowed, isGuest } = useAuth();
 
   if (loading) return <div className="glass-panel" style={{ margin: '2rem' }}>Loading...</div>;
-  if (!user) return <Navigate to="/login" />;
+
+  // Allow access if user is logged in OR in guest mode
+  if (!user && !isGuest) return <Navigate to="/login" />;
 
   if (isAllowed === false) {
     return (
@@ -28,15 +30,12 @@ function PrivateLayout({ children }) {
       }}>
         <div className="glass-panel" style={{ padding: '2rem', maxWidth: '400px' }}>
           <h2 style={{ marginBottom: '1rem', color: 'var(--color-danger)' }}>Access Restricted</h2>
-          <p style={{ color: 'var(--color-text-dim)', marginBottom: '2rem' }}>
+          <p style={{ color: 'var(--color-text-dim)', marginBottom: '1rem' }}>
             This application is currently in development and access is limited to allowed testers.
           </p>
-          <button
-            className="btn btn-secondary"
-            onClick={() => signOut(auth)}
-          >
-            Log Out
-          </button>
+          <p style={{ color: 'var(--color-text-dim)', fontSize: '0.85rem', opacity: 0.7 }}>
+            Logging you out automatically...
+          </p>
         </div>
       </div>
     );

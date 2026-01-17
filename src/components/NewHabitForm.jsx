@@ -1,14 +1,11 @@
 import { useState } from 'react';
-import { createHabit } from '../lib/db';
-import { useAuth } from '../context/AuthContext';
 import { useHabits } from '../context/HabitContext';
 import { X } from 'lucide-react';
 
 import { MAX_HABITS } from '../lib/constants';
 
 export default function NewHabitForm({ onClose }) {
-    const { user } = useAuth();
-    const { addHabitToState, habits } = useHabits();
+    const { addHabitToState, habits, storage } = useHabits();
     const [title, setTitle] = useState('');
     const [type, setType] = useState('daily');
     const [targetCount, setTargetCount] = useState(1);
@@ -38,8 +35,8 @@ export default function NewHabitForm({ onClose }) {
                 frequency: 'everyday'
             };
 
-            const newId = await createHabit(user.uid, habitData);
-            addHabitToState({ ...habitData, id: newId, userId: user.uid });
+            const newId = await storage.createHabit(habitData);
+            addHabitToState({ ...habitData, id: newId });
             onClose();
         } catch (err) {
             console.error(err);

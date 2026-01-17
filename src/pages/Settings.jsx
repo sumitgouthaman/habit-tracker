@@ -1,12 +1,13 @@
 import { auth } from '../lib/firebase';
-import { deleteUserData, exportUserData, importUserData } from '../lib/db';
 import { useAuth } from '../context/AuthContext';
+import { useHabits } from '../context/HabitContext';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Trash2, LogOut, Download, Upload } from 'lucide-react';
+import { Trash2, LogOut, Download, Upload, LogIn, Cloud } from 'lucide-react';
 
 export default function Settings() {
-    const { user } = useAuth();
+    const { user, isGuest, setGuestMode } = useAuth();
+    const { storage } = useHabits();
     const navigate = useNavigate();
     const [deleting, setDeleting] = useState(false);
     const [exporting, setExporting] = useState(false);
@@ -17,6 +18,11 @@ export default function Settings() {
         navigate('/login');
     };
 
+    const handleSignIn = () => {
+        // Don't clear guest mode here - Login.jsx will handle sync
+        navigate('/login');
+    };
+
     const handleDeleteData = async () => {
         if (!confirm("Are you sure? This will delete ALL your habits and history. This cannot be undone.")) {
             return;
@@ -24,7 +30,7 @@ export default function Settings() {
 
         setDeleting(true);
         try {
-            await deleteUserData(user.uid);
+            await storage.deleteUserData();
             alert("All data deleted.");
             window.location.reload(); // Refresh to clear state
         } catch (err) {
@@ -38,7 +44,7 @@ export default function Settings() {
     const handleExport = async () => {
         setExporting(true);
         try {
-            const data = await exportUserData(user.uid);
+            const data = await storage.exportUserData();
             const jsonString = JSON.stringify(data, null, 2);
             const blob = new Blob([jsonString], { type: 'application/json' });
             const href = URL.createObjectURL(blob);
@@ -74,7 +80,7 @@ export default function Settings() {
         reader.onload = async (e) => {
             try {
                 const json = JSON.parse(e.target.result);
-                await importUserData(user.uid, json);
+                await storage.importUserData(json);
                 alert("Import successful!");
                 window.location.reload(); // Refresh to ensure valid state
             } catch (err) {
@@ -101,30 +107,75 @@ export default function Settings() {
 
             <div className="glass-panel" style={{ marginBottom: '2rem' }}>
                 <h3 style={{ marginBottom: '1rem' }}>Account</h3>
-                <p style={{ color: 'var(--color-text-dim)', marginBottom: '1rem' }}>
-                    Signed in as {user?.email}
-                </p>
 
-                <button
-                    onClick={handleSignOut}
-                    style={{
-                        width: '100%',
-                        padding: '1rem',
-                        background: 'rgba(255, 255, 255, 0.03)',
-                        border: '1px solid var(--glass-border)',
-                        borderRadius: '8px',
-                        color: 'var(--color-text)',
-                        cursor: 'pointer',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-                        transition: 'all 0.2s',
-                        fontSize: '1rem',
-                        fontWeight: 500
-                    }}
-                    onMouseEnter={(e) => e.target.style.background = 'rgba(255, 255, 255, 0.08)'}
-                    onMouseLeave={(e) => e.target.style.background = 'rgba(255, 255, 255, 0.03)'}
-                >
-                    <LogOut size={20} /> Sign Out
-                </button>
+                {isGuest ? (
+                    <>
+                        <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            color: 'var(--color-text-dim)',
+                            marginBottom: '1rem'
+                        }}>
+                            <Cloud size={16} style={{ opacity: 0.7 }} />
+                            <span>Using local storage (not signed in)</span>
+                        </div>
+
+                        <button
+                            onClick={handleSignIn}
+                            style={{
+                                width: '100%',
+                                padding: '1rem',
+                                background: 'var(--color-primary)',
+                                border: 'none',
+                                borderRadius: '8px',
+                                color: 'white',
+                                cursor: 'pointer',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                                transition: 'all 0.2s',
+                                fontSize: '1rem',
+                                fontWeight: 500
+                            }}
+                        >
+                            <LogIn size={20} /> Sign In to Sync
+                        </button>
+                        <p style={{
+                            fontSize: '0.85rem',
+                            color: 'var(--color-text-dim)',
+                            marginTop: '0.75rem',
+                            textAlign: 'center'
+                        }}>
+                            Sign in to sync your habits across devices
+                        </p>
+                    </>
+                ) : (
+                    <>
+                        <p style={{ color: 'var(--color-text-dim)', marginBottom: '1rem' }}>
+                            Signed in as {user?.email}
+                        </p>
+
+                        <button
+                            onClick={handleSignOut}
+                            style={{
+                                width: '100%',
+                                padding: '1rem',
+                                background: 'rgba(255, 255, 255, 0.03)',
+                                border: '1px solid var(--glass-border)',
+                                borderRadius: '8px',
+                                color: 'var(--color-text)',
+                                cursor: 'pointer',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                                transition: 'all 0.2s',
+                                fontSize: '1rem',
+                                fontWeight: 500
+                            }}
+                            onMouseEnter={(e) => e.target.style.background = 'rgba(255, 255, 255, 0.08)'}
+                            onMouseLeave={(e) => e.target.style.background = 'rgba(255, 255, 255, 0.03)'}
+                        >
+                            <LogOut size={20} /> Sign Out
+                        </button>
+                    </>
+                )}
             </div>
 
             <div className="glass-panel" style={{ marginBottom: '2rem' }}>
@@ -229,3 +280,4 @@ export default function Settings() {
         </div>
     );
 }
+
