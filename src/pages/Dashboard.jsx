@@ -19,20 +19,52 @@ export default function Dashboard() {
   const [editingHabit, setEditingHabit] = useState(null);
   const [selectedHabit, setSelectedHabit] = useState(null);
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [slideDirection, setSlideDirection] = useState('fade-in');
 
   const dateInputRef = useRef(null);
+  const touchStartX = useRef(null);
+  const touchEndX = useRef(null);
 
   const handleDateChange = (e) => {
     if (e.target.value) {
       // Parse "YYYY-MM-DD" manually to ensure local time representation
       const [year, month, day] = e.target.value.split('-').map(Number);
+      setSlideDirection('fade-in');
       setCurrentDate(new Date(year, month - 1, day));
     }
   };
 
-  const handlePrevDay = () => setCurrentDate(prev => subDays(prev, 1));
-  const handleNextDay = () => setCurrentDate(prev => addDays(prev, 1));
+  const handlePrevDay = () => {
+    setSlideDirection('slide-in-left');
+    setCurrentDate(prev => subDays(prev, 1));
+  };
+  const handleNextDay = () => {
+    setSlideDirection('slide-in-right');
+    setCurrentDate(prev => addDays(prev, 1));
+  };
   const isToday = isSameDay(currentDate, new Date());
+
+  const handleTouchStart = (e) => {
+    touchEndX.current = null;
+    touchStartX.current = e.targetTouches[0].clientX;
+  };
+
+  const handleTouchMove = (e) => {
+    touchEndX.current = e.targetTouches[0].clientX;
+  };
+
+  const handleTouchEnd = () => {
+    if (!touchStartX.current || !touchEndX.current) return;
+    const distance = touchStartX.current - touchEndX.current;
+    const swipeThreshold = 50;
+    if (distance > swipeThreshold) {
+      handleNextDay();
+    } else if (distance < -swipeThreshold) {
+      handlePrevDay();
+    }
+    touchStartX.current = null;
+    touchEndX.current = null;
+  };
 
   const handleSignOut = () => {
     auth.signOut();
@@ -60,7 +92,13 @@ export default function Dashboard() {
   const monthlyHabits = habits.filter(h => h.type === 'monthly').sort((a, b) => a.title.localeCompare(b.title));
 
   return (
-    <div style={{ paddingBottom: '100px' }} onClick={() => setShowProfileMenu(false)}>
+    <div 
+      style={{ paddingBottom: '100px', minHeight: '100vh', overflowX: 'hidden' }} 
+      onClick={() => setShowProfileMenu(false)}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
       <header style={{
         display: 'flex',
         justifyContent: 'space-between',
@@ -110,7 +148,10 @@ export default function Dashboard() {
 
           {!isToday && (
             <button
-              onClick={() => setCurrentDate(new Date())}
+              onClick={() => {
+                setSlideDirection('fade-in');
+                setCurrentDate(new Date());
+              }}
               className="btn-secondary"
               style={{ padding: '0.4rem', border: 'none', marginLeft: '0.2rem' }}
               title="Go to Today"
@@ -179,7 +220,7 @@ export default function Dashboard() {
         </div>
       </header>
 
-
+      <div key={currentDate.getTime()} className={slideDirection}>
       {/* Daily Habits */}
       <section style={{ marginBottom: '2rem' }}>
         <h3 style={{ marginBottom: '1rem', opacity: 0.8 }}>Daily Goals</h3>
@@ -238,6 +279,7 @@ export default function Dashboard() {
           </section>
         )
       }
+      </div>
 
       {/* Floating Action Button */}
       <button

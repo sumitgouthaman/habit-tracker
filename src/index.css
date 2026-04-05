@@ -209,11 +209,29 @@ h6 {
 
 /* Fade in animation */
 @keyframes fadeIn {
-  0% {
-    opacity: 0;
-  }
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
 
-  100% {
-    opacity: 1;
-  }
+/* Slide in animations */
+.slide-in-right {
+  animation: slideInRight 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+.slide-in-left {
+  animation: slideInLeft 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+.fade-in {
+  animation: fadeIn 0.25s ease-out forwards;
+}
+
+@keyframes slideInRight {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes slideInLeft {
+  from { transform: translateX(-100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
 }
