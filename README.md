@@ -7,7 +7,7 @@ A simple Habit Tracker without ads or in-app purchases. I couldn't find one that
 
 | | | | |
 |:---:|:---:|:---:|:---:|
-| <img src="screenshots/main_page.png" width="200" alt="Dashboard" /> | <img src="screenshots/stats.png" width="200" alt="Stats" /> | <img src="screenshots/stats_2.png" width="200" alt="Stats 2" /> | <img src="screenshots/settings.png" width="200" alt="Settings" /> |
+| <img src="screenshots/main_page.png" width="200" alt="Dashboard" /> | <img src="screenshots/stats.png" width="200" alt="Stats" /> | <img src="screenshots/stats_3.png" width="200" alt="Detailed stats" /> | <img src="screenshots/settings.png" width="200" alt="Settings" /> |
 
 <br />
 
