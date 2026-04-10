@@ -1,4 +1,4 @@
-import { format, subDays, startOfWeek, subWeeks, startOfMonth, subMonths, isSameDay } from 'date-fns';
+import { format, subDays, startOfWeek, subWeeks, startOfMonth, subMonths, isSameDay, parseISO, differenceInDays } from 'date-fns';
 import { getPeriodKey } from '../lib/storage';
 import { MAX_STREAK_LOOKBACK_DAYS } from '../lib/constants';
 
@@ -109,6 +109,32 @@ function calculateDailyStreakSimple(logs, assumeTodayComplete = false) {
 export function calculateTotal(habit) {
     const logs = habit.logs || {};
     return Object.values(logs).filter(l => l.completed).length;
+}
+
+/**
+ * Calculates the best (longest ever) streak for a daily habit.
+ */
+export function calculateBestStreak(habit) {
+    if (habit.type !== 'daily') return 0;
+    const logs = habit.logs || {};
+    const keys = Object.keys(logs)
+        .filter(k => logs[k]?.completed)
+        .sort(); // ISO date strings sort lexicographically
+    if (!keys.length) return 0;
+
+    let best = 1, current = 1;
+    for (let i = 1; i < keys.length; i++) {
+        const prev = parseISO(keys[i - 1]);
+        const curr = parseISO(keys[i]);
+        const diff = differenceInDays(curr, prev);
+        if (diff === 1) {
+            current++;
+            if (current > best) best = current;
+        } else {
+            current = 1;
+        }
+    }
+    return best;
 }
 
 /**
