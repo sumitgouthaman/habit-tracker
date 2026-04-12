@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "280063930300",
+    "project_id": "habittracker-b6ec8",
+    "storage_bucket": "habittracker-b6ec8.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:280063930300:android:da9294a3bce9443a16c5b9",
+        "android_client_info": {
+          "package_name": "com.sumitgouthaman.habittracker"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "280063930300-ufvo19qe5nrs0ns82ic88s7qs1nrd285.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAI92fqxOyOKbHkyV0YKuruxu1rbHfNTR0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "280063930300-ufvo19qe5nrs0ns82ic88s7qs1nrd285.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
