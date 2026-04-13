@@ -15,6 +15,12 @@ A simple Habit Tracker without ads or in-app purchases. I couldn't find one that
 |:---:|
 | <img src="screenshots/tablet.PNG" width="600" alt="Tablet" /> |
 
+## Wear OS App
+
+| Screenshot | Recording |
+|:---:|:---:|
+| <img src="android/screenshots/wearos_screenshot.png" width="250" alt="Wear OS habit list" /> | <video src="android/screenshots/wearos_recording.mp4" width="250" controls></video> |
+
 ## Features
 
 -   **Smart Tracking**: Daily, Weekly, and Monthly habits with auto-reset.
