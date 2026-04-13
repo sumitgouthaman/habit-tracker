@@ -5,17 +5,21 @@ A simple Habit Tracker without ads or in-app purchases. I couldn't find one that
 > Vibecoded using **Antigravity IDE**.
 
 
+## Screenshots
+
+### Phone
+
 | | | | |
 |:---:|:---:|:---:|:---:|
 | <img src="screenshots/main_page.png" width="200" alt="Dashboard" /> | <img src="screenshots/stats.png" width="200" alt="Stats" /> | <img src="screenshots/stats_3.png" width="200" alt="Detailed stats" /> | <img src="screenshots/settings.png" width="200" alt="Settings" /> |
 
-<br />
+### Tablet
 
 | |
 |:---:|
 | <img src="screenshots/tablet.PNG" width="600" alt="Tablet" /> |
 
-## Wear OS App
+### Watch (Wear OS)
 
 | Screenshot | Recording |
 |:---:|:---:|
