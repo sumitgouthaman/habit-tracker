@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.sumitgouthaman.habittracker.data.model.Habit
 import com.sumitgouthaman.habittracker.data.repository.HabitRepository
 import com.sumitgouthaman.habittracker.util.getPeriodKey
+import java.time.LocalDate
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
@@ -20,22 +21,22 @@ class HabitViewModel(private val repo: HabitRepository = HabitRepository()) : Vi
     val habits: StateFlow<List<Habit>?> = repo.observeHabits()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), initialValue = null)
 
-    /** Binary habit: toggle done ↔ undone. */
-    fun onHabitToggle(habit: Habit) = viewModelScope.launch {
-        val key = getPeriodKey(type = habit.type)
+    /** Binary habit: toggle done ↔ undone for the given [date]. */
+    fun onHabitToggle(habit: Habit, date: LocalDate = LocalDate.now()) = viewModelScope.launch {
+        val key = getPeriodKey(date = date, type = habit.type)
         val isCompleted = habit.logs[key]?.completed == true
         val newValue = if (isCompleted) 0 else 1
-        repo.updateLog(habit.id, newValue, habit.targetCount, habit.type)
+        repo.updateLog(habit.id, newValue, habit.targetCount, habit.type, date)
     }
 
     /**
-     * Count habit: add [amount] to the current value.
+     * Count habit: add [amount] to the current value for the given [date].
      * No upper cap — going over the target shows a multiplier badge (e.g. 3x),
      * matching the PWA behaviour.
      */
-    fun onHabitIncrement(habit: Habit, amount: Int) = viewModelScope.launch {
-        val key = getPeriodKey(type = habit.type)
+    fun onHabitIncrement(habit: Habit, amount: Int, date: LocalDate = LocalDate.now()) = viewModelScope.launch {
+        val key = getPeriodKey(date = date, type = habit.type)
         val current = habit.logs[key]?.value ?: 0
-        repo.updateLog(habit.id, current + amount, habit.targetCount, habit.type)
+        repo.updateLog(habit.id, current + amount, habit.targetCount, habit.type, date)
     }
 }

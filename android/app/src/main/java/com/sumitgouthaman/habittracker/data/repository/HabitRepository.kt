@@ -6,6 +6,7 @@ import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import com.sumitgouthaman.habittracker.data.model.Habit
 import com.sumitgouthaman.habittracker.util.getPeriodKey
+import java.time.LocalDate
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -38,9 +39,9 @@ class HabitRepository {
         awaitClose { subscription.remove() }
     }
 
-    suspend fun updateLog(habitId: String, newValue: Int, targetCount: Int, type: String) {
+    suspend fun updateLog(habitId: String, newValue: Int, targetCount: Int, type: String, date: LocalDate = LocalDate.now()) {
         val uid = auth.currentUser?.uid ?: return
-        val key = getPeriodKey(type = type)
+        val key = getPeriodKey(date = date, type = type)
         db.collection("users").document(uid)
             .collection("habits").document(habitId)
             .update(

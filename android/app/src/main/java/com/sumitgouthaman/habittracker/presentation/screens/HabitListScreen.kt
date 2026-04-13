@@ -18,9 +18,14 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -46,13 +51,17 @@ import androidx.wear.compose.material3.lazy.transformedHeight
 import com.sumitgouthaman.habittracker.data.model.Habit
 import com.sumitgouthaman.habittracker.presentation.viewmodel.HabitViewModel
 import com.sumitgouthaman.habittracker.util.getPeriodKey
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 
 private val CompletedGreen = Color(0xFF22C55E)
 private val InProgressAmber = Color(0xFFFBBF24)
+private val MonthDayFormatter = DateTimeFormatter.ofPattern("MMM d")
 
 @Composable
 fun HabitListScreen(viewModel: HabitViewModel) {
     val habits by viewModel.habits.collectAsState()
+    var currentDate by remember { mutableStateOf(LocalDate.now()) }
 
     AppScaffold {
         val listState = rememberTransformingLazyColumnState()
@@ -63,17 +72,6 @@ fun HabitListScreen(viewModel: HabitViewModel) {
                 contentPadding = contentPadding,
                 state = listState,
             ) {
-                item {
-                    ListHeader(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .transformedHeight(this, transformationSpec),
-                        transformation = SurfaceTransformation(transformationSpec),
-                    ) {
-                        Text("Today")
-                    }
-                }
-
                 when {
                     habits == null -> item {
                         Box(
@@ -101,30 +99,168 @@ fun HabitListScreen(viewModel: HabitViewModel) {
                         }
                     }
 
-                    else -> items(habits!!) { habit ->
-                        if (habit.targetCount == 1) {
-                            BinaryHabitCard(
-                                habit = habit,
-                                onToggle = { viewModel.onHabitToggle(habit) },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .transformedHeight(this, transformationSpec),
-                                transformation = SurfaceTransformation(transformationSpec),
-                            )
-                        } else {
-                            CountHabitCard(
-                                habit = habit,
-                                onIncrement = { amount -> viewModel.onHabitIncrement(habit, amount) },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .transformedHeight(this, transformationSpec),
-                                transformation = SurfaceTransformation(transformationSpec),
-                            )
+                    else -> {
+                        val daily = habits!!.filter { it.type == "daily" }.sortedBy { it.title }
+                        val weekly = habits!!.filter { it.type == "weekly" }.sortedBy { it.title }
+                        val monthly = habits!!.filter { it.type == "monthly" }.sortedBy { it.title }
+
+                        if (daily.isNotEmpty()) {
+                            item {
+                                ListHeader(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .transformedHeight(this, transformationSpec),
+                                    transformation = SurfaceTransformation(transformationSpec),
+                                ) { Text("Daily Goals") }
+                            }
+                            items(daily) { habit ->
+                                HabitCard(
+                                    habit = habit,
+                                    date = currentDate,
+                                    onToggle = { viewModel.onHabitToggle(habit, currentDate) },
+                                    onIncrement = { amount -> viewModel.onHabitIncrement(habit, amount, currentDate) },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .transformedHeight(this, transformationSpec),
+                                    transformation = SurfaceTransformation(transformationSpec),
+                                )
+                            }
+                        }
+
+                        if (weekly.isNotEmpty()) {
+                            item {
+                                ListHeader(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .transformedHeight(this, transformationSpec),
+                                    transformation = SurfaceTransformation(transformationSpec),
+                                ) { Text("Weekly Goals") }
+                            }
+                            items(weekly) { habit ->
+                                HabitCard(
+                                    habit = habit,
+                                    date = currentDate,
+                                    onToggle = { viewModel.onHabitToggle(habit, currentDate) },
+                                    onIncrement = { amount -> viewModel.onHabitIncrement(habit, amount, currentDate) },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .transformedHeight(this, transformationSpec),
+                                    transformation = SurfaceTransformation(transformationSpec),
+                                )
+                            }
+                        }
+
+                        if (monthly.isNotEmpty()) {
+                            item {
+                                ListHeader(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .transformedHeight(this, transformationSpec),
+                                    transformation = SurfaceTransformation(transformationSpec),
+                                ) { Text("Monthly Goals") }
+                            }
+                            items(monthly) { habit ->
+                                HabitCard(
+                                    habit = habit,
+                                    date = currentDate,
+                                    onToggle = { viewModel.onHabitToggle(habit, currentDate) },
+                                    onIncrement = { amount -> viewModel.onHabitIncrement(habit, amount, currentDate) },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .transformedHeight(this, transformationSpec),
+                                    transformation = SurfaceTransformation(transformationSpec),
+                                )
+                            }
                         }
                     }
                 }
+
+                item {
+                    DateNavRow(
+                        currentDate = currentDate,
+                        onPrev = { currentDate = currentDate.minusDays(1) },
+                        onNext = { currentDate = currentDate.plusDays(1) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .transformedHeight(this, transformationSpec),
+                    )
+                }
             }
         }
+    }
+}
+
+// ─── Date navigation row ──────────────────────────────────────────────────────
+
+@Composable
+private fun DateNavRow(
+    currentDate: LocalDate,
+    onPrev: () -> Unit,
+    onNext: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val today = LocalDate.now()
+    val dateLabel = when (currentDate) {
+        today -> "Today"
+        today.minusDays(1) -> "Yesterday"
+        else -> currentDate.format(MonthDayFormatter)
+    }
+    val isToday = currentDate == today
+
+    Row(
+        modifier = modifier.padding(vertical = 8.dp),
+        horizontalArrangement = Arrangement.SpaceEvenly,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        NavButton(icon = Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = "Previous day", onClick = onPrev)
+        Text(
+            text = dateLabel,
+            style = MaterialTheme.typography.bodySmall,
+            color = if (isToday) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        NavButton(icon = Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Next day", onClick = onNext)
+    }
+}
+
+@Composable
+private fun NavButton(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    contentDescription: String,
+    onClick: () -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .size(36.dp)
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = contentDescription,
+            tint = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.size(20.dp),
+        )
+    }
+}
+
+// ─── Unified habit card (binary or count) ─────────────────────────────────────
+
+@Composable
+private fun HabitCard(
+    habit: Habit,
+    date: LocalDate,
+    onToggle: () -> Unit,
+    onIncrement: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+    transformation: SurfaceTransformation? = null,
+) {
+    if (habit.targetCount == 1) {
+        BinaryHabitCard(habit, date, onToggle, modifier, transformation)
+    } else {
+        CountHabitCard(habit, date, onIncrement, modifier, transformation)
     }
 }
 
@@ -133,14 +269,14 @@ fun HabitListScreen(viewModel: HabitViewModel) {
 @Composable
 private fun BinaryHabitCard(
     habit: Habit,
+    date: LocalDate,
     onToggle: () -> Unit,
     modifier: Modifier = Modifier,
     transformation: SurfaceTransformation? = null,
 ) {
-    val key = getPeriodKey(type = habit.type)
+    val key = getPeriodKey(date = date, type = habit.type)
     val currentValue = habit.logs[key]?.value ?: 0
     val isCompleted = habit.logs[key]?.completed == true
-    val typeLabel = habit.type.replaceFirstChar { it.uppercase() }
 
     Card(
         onClick = onToggle,
@@ -165,7 +301,7 @@ private fun BinaryHabitCard(
                 )
                 Spacer(Modifier.height(2.dp))
                 Text(
-                    text = "$typeLabel · $currentValue / ${habit.targetCount}",
+                    text = "$currentValue / ${habit.targetCount}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -207,21 +343,20 @@ private fun CheckIndicator(isCompleted: Boolean) {
 @Composable
 private fun CountHabitCard(
     habit: Habit,
+    date: LocalDate,
     onIncrement: (Int) -> Unit,
     modifier: Modifier = Modifier,
     transformation: SurfaceTransformation? = null,
 ) {
-    val key = getPeriodKey(type = habit.type)
+    val key = getPeriodKey(date = date, type = habit.type)
     val currentValue = habit.logs[key]?.value ?: 0
     val isCompleted = habit.logs[key]?.completed == true
-    val typeLabel = habit.type.replaceFirstChar { it.uppercase() }
     val multiplier = if (habit.targetCount > 0) currentValue / habit.targetCount else 0
 
-    // Use the habit's configured increments, or fall back to [1]
     val incrementValues: List<Int> = habit.increments
         .map { it.toInt() }
         .ifEmpty { listOf(1) }
-        .take(4) // cap at 4 to avoid overflow on small screens
+        .take(4)
 
     Card(
         onClick = { onIncrement(incrementValues.first()) },
@@ -231,7 +366,6 @@ private fun CountHabitCard(
             containerColor = MaterialTheme.colorScheme.surfaceContainer,
         ),
     ) {
-        // Title
         Text(
             text = habit.title,
             style = MaterialTheme.typography.titleSmall,
@@ -241,10 +375,9 @@ private fun CountHabitCard(
         )
         Spacer(Modifier.height(2.dp))
 
-        // Subtitle + optional multiplier badge
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                text = "$typeLabel · $currentValue / ${habit.targetCount}",
+                text = "$currentValue / ${habit.targetCount}",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -268,7 +401,6 @@ private fun CountHabitCard(
 
         Spacer(Modifier.height(10.dp))
 
-        // Increment buttons
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceEvenly,
