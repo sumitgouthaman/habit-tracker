@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "280063930300-nggicueij8bmgi21snie3rh8cmg04rko.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.sumitgouthaman.habittracker",
+            "certificate_hash": "d2043bb94d4ee2da7638422e0f11e9bb34e91acd"
+          }
+        },
+        {
           "client_id": "280063930300-ufvo19qe5nrs0ns82ic88s7qs1nrd285.apps.googleusercontent.com",
           "client_type": 3
         }
