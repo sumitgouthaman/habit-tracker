@@ -23,7 +23,7 @@ A simple Habit Tracker without ads or in-app purchases. I couldn't find one that
 
 | Screenshot | Recording |
 |:---:|:---:|
-| <img src="android/screenshots/wearos_screenshot.png" width="250" alt="Wear OS habit list" /> | <video src="android/screenshots/wearos_recording.mp4" width="250" controls></video> |
+| <img src="android/screenshots/wearos_screenshot.png" width="250" alt="Wear OS habit list" /> | <img src="android/screenshots/wearos_recording.gif" width="250" alt="Wear OS recording" /> |
 
 ## Features
 
