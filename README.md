@@ -39,8 +39,11 @@ A simple Habit Tracker without ads or in-app purchases. I couldn't find one that
 -   **Backend**: Firebase (Firestore, Auth, Hosting)
 -   **Styling**: CSS Modules
 -   **Icons**: Lucide React
+-   **Wear OS**: Kotlin, Jetpack Compose
 
 ## Getting Started
+
+### Web App
 
 1.  **Clone & Install**:
     ```bash
@@ -53,6 +56,10 @@ A simple Habit Tracker without ads or in-app purchases. I couldn't find one that
     npm run dev
     ```
     Open `http://localhost:5173`.
+
+### Wear OS App
+
+To build or run the Wear OS app, open the `android` directory in Android Studio. Ensure you have the necessary SDKs and a Wear OS emulator configured.
 
 ## Deployment & Setup
 

@@ -59,6 +59,27 @@ If you prefer using the Firebase Console:
 1.  Go to **Authentication** > **Sign-in method**.
 2.  Enable **Google** provider.
 
+### Android (Wear OS) App
+1.  Go to **Project settings** > **General**.
+2.  Click **Add app** and select **Android**.
+3.  Enter the package name (e.g., `com.sumitgouthaman.habittracker`).
+4.  Add your **debug SHA-1 key** to the Android app configuration (this is required for Google Sign-In).
+    *   **Finding the Debug SHA-1 via Gradle**:
+        Open a terminal in the `android` directory and run:
+        ```bash
+        ./gradlew signingReport
+        ```
+        Look for the `SHA1` under the `Variant: debug` output.
+    *   **Finding the Debug SHA-1 via keytool (Mac/Linux)**:
+        ```bash
+        keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android -keypass android
+        ```
+    > [!WARNING]
+    > **Development Only:** The debug SHA-1 key should only be used for local development. Before publishing to the Google Play Store, you must generate a proper release signing key, sign your app with it, and add the **production** SHA-1 fingerprint to the Firebase Android app configuration.
+
+5.  Download the `google-services.json` file.
+6.  Place the `google-services.json` file into the `android/app/` directory of this repository.
+
 ### Firestore Database
 1.  Create a database in **Production mode**.
 2.  Location: `us-central1` (or your preference).
