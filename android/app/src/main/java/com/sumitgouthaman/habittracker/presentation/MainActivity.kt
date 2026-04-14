@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -24,12 +25,16 @@ import androidx.wear.compose.material3.CircularProgressIndicator
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.firebase.auth.GoogleAuthProvider
-import com.google.firebase.auth.ktx.auth
-import com.google.firebase.ktx.Firebase
+import com.google.firebase.Firebase
+import com.google.firebase.auth.auth
+import com.sumitgouthaman.habittracker.data.repository.SettingsRepository
 import com.sumitgouthaman.habittracker.presentation.screens.HabitListScreen
 import com.sumitgouthaman.habittracker.presentation.screens.SignInScreen
+import com.sumitgouthaman.habittracker.presentation.screens.TimePickerScreen
 import com.sumitgouthaman.habittracker.presentation.theme.HabitTrackerTheme
 import com.sumitgouthaman.habittracker.presentation.viewmodel.HabitViewModel
+import com.sumitgouthaman.habittracker.util.ReminderManager
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
@@ -78,7 +83,35 @@ class MainActivity : ComponentActivity() {
             AuthState.Loading -> LoadingScreen()
             AuthState.SignedIn -> {
                 val vm: HabitViewModel = viewModel()
-                HabitListScreen(viewModel = vm)
+                val settingsRepo = remember { SettingsRepository(this@MainActivity) }
+                var showTimePicker by remember { mutableStateOf(false) }
+
+                if (showTimePicker) {
+                    val currentHour by settingsRepo.reminderHour.collectAsState(initial = 9)
+                    val currentMinute by settingsRepo.reminderMinute.collectAsState(initial = 0)
+
+                    TimePickerScreen(
+                        initialHour = currentHour,
+                        initialMinute = currentMinute,
+                        onTimeConfirmed = { hr, min ->
+                            lifecycleScope.launch {
+                                settingsRepo.setReminderTime(hr, min)
+                                val isEnabled = settingsRepo.isReminderEnabled.first()
+                                if (isEnabled) {
+                                    ReminderManager.scheduleDailyReminder(this@MainActivity, hr, min)
+                                }
+                            }
+                            showTimePicker = false
+                        },
+                        onCancel = { showTimePicker = false }
+                    )
+                } else {
+                    HabitListScreen(
+                        viewModel = vm,
+                        settingsRepo = settingsRepo,
+                        onOpenTimePicker = { showTimePicker = true }
+                    )
+                }
             }
             AuthState.NeedsSignIn -> SignInScreen(onSignIn = {
                 lifecycleScope.launch {

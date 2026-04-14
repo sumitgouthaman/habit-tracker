@@ -1,5 +1,10 @@
 package com.sumitgouthaman.habittracker.presentation.screens
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -25,14 +30,17 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.wear.compose.foundation.lazy.TransformingLazyColumn
 import androidx.wear.compose.foundation.lazy.items
 import androidx.wear.compose.foundation.lazy.rememberTransformingLazyColumnState
@@ -45,21 +53,30 @@ import androidx.wear.compose.material3.ListHeader
 import androidx.wear.compose.material3.MaterialTheme
 import androidx.wear.compose.material3.ScreenScaffold
 import androidx.wear.compose.material3.SurfaceTransformation
+import androidx.wear.compose.material3.SwitchButton
 import androidx.wear.compose.material3.Text
 import androidx.wear.compose.material3.lazy.rememberTransformationSpec
 import androidx.wear.compose.material3.lazy.transformedHeight
 import com.sumitgouthaman.habittracker.data.model.Habit
+import com.sumitgouthaman.habittracker.data.repository.SettingsRepository
 import com.sumitgouthaman.habittracker.presentation.viewmodel.HabitViewModel
+import com.sumitgouthaman.habittracker.util.ReminderManager
 import com.sumitgouthaman.habittracker.util.getPeriodKey
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 
 private val CompletedGreen = Color(0xFF22C55E)
 private val InProgressAmber = Color(0xFFFBBF24)
 private val MonthDayFormatter = DateTimeFormatter.ofPattern("MMM d")
 
 @Composable
-fun HabitListScreen(viewModel: HabitViewModel) {
+fun HabitListScreen(
+    viewModel: HabitViewModel,
+    settingsRepo: SettingsRepository? = null,
+    onOpenTimePicker: () -> Unit = {}
+) {
     val habits by viewModel.habits.collectAsState()
     var currentDate by remember { mutableStateOf(LocalDate.now()) }
 
@@ -185,7 +202,154 @@ fun HabitListScreen(viewModel: HabitViewModel) {
                             .transformedHeight(this, transformationSpec),
                     )
                 }
+
+                // ─── Settings section ─────────────────────────────────────
+                if (settingsRepo != null) {
+                    item {
+                        ListHeader(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .transformedHeight(this, transformationSpec),
+                            transformation = SurfaceTransformation(transformationSpec)
+                        ) { Text("Settings") }
+                    }
+
+                    item {
+                        ReminderToggleItem(
+                            settingsRepo = settingsRepo,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .transformedHeight(this, transformationSpec),
+                        )
+                    }
+
+                    item {
+                        ReminderTimeItem(
+                            settingsRepo = settingsRepo,
+                            onOpenTimePicker = onOpenTimePicker,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .transformedHeight(this, transformationSpec),
+                        )
+                    }
+                }
             }
+        }
+    }
+}
+
+// ─── Settings composables ─────────────────────────────────────────────────────
+
+@Composable
+private fun ReminderToggleItem(
+    settingsRepo: SettingsRepository,
+    modifier: Modifier = Modifier,
+) {
+    val isReminderEnabled by settingsRepo.isReminderEnabled.collectAsState(initial = false)
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            scope.launch {
+                settingsRepo.setReminderEnabled(true)
+                val hr = settingsRepo.reminderHour.first()
+                val min = settingsRepo.reminderMinute.first()
+                ReminderManager.scheduleDailyReminder(context, hr, min)
+            }
+        }
+    }
+
+    SwitchButton(
+        checked = isReminderEnabled,
+        onCheckedChange = { checked ->
+            if (checked) {
+                enableReminder(context, scope, settingsRepo, permissionLauncher)
+            } else {
+                scope.launch {
+                    settingsRepo.setReminderEnabled(false)
+                    ReminderManager.cancelReminder(context)
+                }
+            }
+        },
+        label = { Text("Daily reminder") },
+        modifier = modifier.padding(horizontal = 8.dp),
+    )
+}
+
+private fun enableReminder(
+    context: android.content.Context,
+    scope: kotlinx.coroutines.CoroutineScope,
+    settingsRepo: SettingsRepository,
+    permissionLauncher: androidx.activity.result.ActivityResultLauncher<String>,
+) {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        if (ContextCompat.checkSelfPermission(
+                context, Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED
+        ) {
+            scope.launch {
+                settingsRepo.setReminderEnabled(true)
+                val hr = settingsRepo.reminderHour.first()
+                val min = settingsRepo.reminderMinute.first()
+                ReminderManager.scheduleDailyReminder(context, hr, min)
+            }
+        } else {
+            permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    } else {
+        // Pre-Tiramisu: notification permission is granted at install time
+        scope.launch {
+            settingsRepo.setReminderEnabled(true)
+            val hr = settingsRepo.reminderHour.first()
+            val min = settingsRepo.reminderMinute.first()
+            ReminderManager.scheduleDailyReminder(context, hr, min)
+        }
+    }
+}
+
+@Composable
+private fun ReminderTimeItem(
+    settingsRepo: SettingsRepository,
+    onOpenTimePicker: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val isReminderEnabled by settingsRepo.isReminderEnabled.collectAsState(initial = false)
+    if (!isReminderEnabled) return
+
+    val hour by settingsRepo.reminderHour.collectAsState(initial = 9)
+    val minute by settingsRepo.reminderMinute.collectAsState(initial = 0)
+    val amPm = if (hour < 12) "AM" else "PM"
+    val displayHour = when {
+        hour == 0 -> 12
+        hour > 12 -> hour - 12
+        else -> hour
+    }
+    val timeStr = String.format("%d:%02d %s", displayHour, minute, amPm)
+
+    Card(
+        onClick = onOpenTimePicker,
+        modifier = modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        ),
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(
+                text = "Reminder time",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                text = timeStr,
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.primary,
+            )
         }
     }
 }
