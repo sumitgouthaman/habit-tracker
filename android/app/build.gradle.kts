@@ -36,6 +36,11 @@ android {
         targetCompatibility = JavaVersion.VERSION_11
     }
     useLibrary("wear-sdk")
+    lint {
+        // False positive: ComponentActivity does extend android.app.Activity but lint
+        // fails to resolve the hierarchy when the wear-sdk stub library is on the classpath.
+        disable += "Instantiatable"
+    }
     buildFeatures {
         compose = true
     }
