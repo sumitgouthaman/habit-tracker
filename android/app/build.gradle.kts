@@ -61,6 +61,7 @@ dependencies {
     implementation(libs.googleid)
     implementation(libs.kotlinx.coroutines.play.services)
     implementation(libs.lifecycle.viewmodel.compose)
+    implementation(libs.lifecycle.runtime.compose)
     implementation(libs.material.icons.core)
     implementation(libs.datastore.preferences)
     androidTestImplementation(platform(libs.compose.bom))
