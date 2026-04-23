@@ -1,17 +1,17 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useHabits } from '../context/HabitContext';
 import { ChevronRight } from 'lucide-react';
 import HabitStatsChart from '../components/HabitStatsChart';
 import HabitDetailedStats from '../components/HabitDetailedStats';
-import { calculateStreak, calculateTotal } from '../utils/habitUtils';
+import { calculateStreak, calculateTotal, getEffectiveLogs, sortHabitsWithDerivedBelow } from '../utils/habitUtils';
 
 export default function Stats() {
     const { habits } = useHabits();
     const [selectedHabit, setSelectedHabit] = useState(null);
 
-    const dailyHabits = habits.filter(h => h.type === 'daily').sort((a, b) => a.title.localeCompare(b.title));
-    const weeklyHabits = habits.filter(h => h.type === 'weekly').sort((a, b) => a.title.localeCompare(b.title));
-    const monthlyHabits = habits.filter(h => h.type === 'monthly').sort((a, b) => a.title.localeCompare(b.title));
+    const dailyHabits = sortHabitsWithDerivedBelow(habits.filter(h => h.type === 'daily'));
+    const weeklyHabits = sortHabitsWithDerivedBelow(habits.filter(h => h.type === 'weekly'));
+    const monthlyHabits = sortHabitsWithDerivedBelow(habits.filter(h => h.type === 'monthly'));
 
     return (
         <div style={{ paddingBottom: '100px' }}>
@@ -69,7 +69,13 @@ export default function Stats() {
 }
 
 function HabitStatsCard({ habit, onSelect }) {
+    const { habits } = useHabits();
     const [timeRange, setTimeRange] = useState('7d');
+
+    const displayHabit = useMemo(() => {
+        if (!habit.derivedFrom) return habit;
+        return { ...habit, logs: getEffectiveLogs(habit, habits) };
+    }, [habit, habits]);
 
     return (
         <div
@@ -96,14 +102,14 @@ function HabitStatsCard({ habit, onSelect }) {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <div style={{ background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '8px', textAlign: 'center' }}>
                     <div style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--color-primary)' }}>
-                        {calculateStreak(habit)}
+                        {calculateStreak(displayHabit)}
                     </div>
                     <div style={{ fontSize: '0.8rem', color: 'var(--color-text-dim)' }}>Current Streak</div>
                 </div>
 
                 <div style={{ background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '8px', textAlign: 'center' }}>
                     <div style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--color-secondary)' }}>
-                        {calculateTotal(habit)}
+                        {calculateTotal(displayHabit)}
                     </div>
                     <div style={{ fontSize: '0.8rem', color: 'var(--color-text-dim)' }}>Total Completed</div>
                 </div>
@@ -134,7 +140,7 @@ function HabitStatsCard({ habit, onSelect }) {
                         Last 12 Months
                     </div>
                 )}
-                <HabitStatsChart habit={habit} range={timeRange} />
+                <HabitStatsChart habit={displayHabit} range={timeRange} />
             </div>
 
             <div style={{ marginTop: '0.75rem', fontSize: '0.75rem', color: 'var(--color-text-dim)', textAlign: 'center', opacity: 0.6 }}>

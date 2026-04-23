@@ -20,12 +20,20 @@ import {
 } from 'date-fns';
 import { ChevronLeft, ChevronRight, X, Edit, Check, RotateCcw } from 'lucide-react';
 import { getPeriodKey } from '../lib/storage';
-import { getLogValue } from '../utils/habitUtils';
+import { getLogValue, getEffectiveLogs } from '../utils/habitUtils';
 import { WEEK_STARTS_ON } from '../lib/constants';
+import { useHabits } from '../context/HabitContext';
 import clsx from 'clsx';
 
 export default function HabitDetails({ habit, onClose, onEdit, onDayClick }) {
+    const { habits } = useHabits();
     const [viewDate, setViewDate] = useState(new Date());
+
+    // For derived habits, use virtual logs computed from source habit
+    const displayHabit = useMemo(() => {
+        if (!habit.derivedFrom) return habit;
+        return { ...habit, logs: getEffectiveLogs(habit, habits) };
+    }, [habit, habits]);
 
     // --- Navigation Helpers ---
     const handlePrev = () => {
@@ -61,7 +69,7 @@ export default function HabitDetails({ habit, onClose, onEdit, onDayClick }) {
         const days = eachDayOfInterval({ start: startDate, end: endDate });
 
         return days.map(day => {
-            const value = getLogValue(habit, day);
+            const value = getLogValue(displayHabit, day);
             const target = habit.targetCount || 1;
             const isCompleted = value >= target;
             const multiplier = target > 0 ? value / target : 0;
@@ -75,7 +83,7 @@ export default function HabitDetails({ habit, onClose, onEdit, onDayClick }) {
                 multiplier
             };
         });
-    }, [viewDate, habit]);
+    }, [viewDate, displayHabit]);
 
     // Weekly/Monthly: List/Grid
     const periodItems = useMemo(() => {
@@ -99,11 +107,8 @@ export default function HabitDetails({ habit, onClose, onEdit, onDayClick }) {
         }
 
         return intervals.map(date => {
-            // Re-use logic from charts/db to get keys
             const key = getPeriodKey(date, dateFormat);
-            // Manual lookup since getLogValue might expect Date object but specific handling needed for periods
-            // Actually getLogValue handles date objects correctly, let's use it but we need to pass the "date" that represents the period start
-            const value = habit.logs?.[key]?.value || 0;
+            const value = displayHabit.logs?.[key]?.value || 0;
             const target = habit.targetCount || 1;
             const isCompleted = value >= target;
 
@@ -112,10 +117,10 @@ export default function HabitDetails({ habit, onClose, onEdit, onDayClick }) {
                 label: format(date, displayFormat),
                 value,
                 isCompleted,
-                key // debug
+                key
             };
         });
-    }, [viewDate, habit]);
+    }, [viewDate, displayHabit]);
 
 
     return (

@@ -1,19 +1,28 @@
 import { useState } from 'react';
 import { useHabits } from '../context/HabitContext';
-import { X, Trash2 } from 'lucide-react';
+import { X, Trash2, Link } from 'lucide-react';
 
 export default function EditHabitForm({ habit, log, date, onClose, onLogUpdate }) {
-    const { updateHabitInState, removeHabitFromState, storage } = useHabits();
+    const { updateHabitInState, removeHabitFromState, habits, storage } = useHabits();
 
     const [title, setTitle] = useState(habit.title);
     const [targetCount, setTargetCount] = useState(habit.targetCount);
-    // Join increments back to string for editing
     const [incrementsStr, setIncrementsStr] = useState((habit.increments || []).join(', '));
-
-    // Current Progress (Manual Override)
     const [currentValue, setCurrentValue] = useState(log?.value || 0);
-
     const [submitting, setSubmitting] = useState(false);
+
+    const isDerived = !!habit.derivedFrom;
+    const sourceHabit = isDerived ? habits.find(h => h.id === habit.derivedFrom) : null;
+
+    const inputStyle = {
+        width: '100%',
+        padding: '0.8rem',
+        background: 'rgba(0,0,0,0.2)',
+        border: '1px solid var(--glass-border)',
+        borderRadius: '8px',
+        color: 'white',
+        outline: 'none'
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -21,38 +30,31 @@ export default function EditHabitForm({ habit, log, date, onClose, onLogUpdate }
 
         setSubmitting(true);
         try {
-            // 1. Parse Increments
-            let increments = [];
-            if (incrementsStr) {
-                increments = incrementsStr.split(',')
-                    .map(s => parseInt(s.trim()))
-                    .filter(n => !isNaN(n) && n > 0);
-            }
+            const updates = { title, targetCount: parseInt(targetCount) };
 
-            // 2. Update Habit Definition
-            const updates = {
-                title,
-                targetCount: parseInt(targetCount),
-                increments
-            };
+            if (!isDerived) {
+                let increments = [];
+                if (incrementsStr) {
+                    increments = incrementsStr.split(',')
+                        .map(s => parseInt(s.trim()))
+                        .filter(n => !isNaN(n) && n > 0);
+                }
+                updates.increments = increments;
+            }
 
             await storage.updateHabit(habit.id, updates);
             updateHabitInState(habit.id, updates);
 
-            // 3. Update Current Log (Manual Override)
-            // We only update the log if the user actually clicked save.
-            // We calculate 'completed' based on the NEW target count.
-            const val = parseInt(currentValue);
-            await storage.updateLog(habit.id, date, val, updates.targetCount, habit.type);
-
-            // Optimistic update for Dashboard
-            if (onLogUpdate) {
-                onLogUpdate(habit.id, {
-                    habitId: habit.id,
-                    value: val,
-                    completed: val >= updates.targetCount,
-                    // We don't have the full log object here (like date format), but value/completed is what matters for UI
-                });
+            if (!isDerived) {
+                const val = parseInt(currentValue);
+                await storage.updateLog(habit.id, date, val, updates.targetCount, habit.type);
+                if (onLogUpdate) {
+                    onLogUpdate(habit.id, {
+                        habitId: habit.id,
+                        value: val,
+                        completed: val >= updates.targetCount,
+                    });
+                }
             }
 
             onClose();
@@ -105,9 +107,25 @@ export default function EditHabitForm({ habit, log, date, onClose, onLogUpdate }
                     </button>
                 </div>
 
-                <form onSubmit={handleSubmit}>
+                {isDerived && (
+                    <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        marginBottom: '1rem',
+                        padding: '0.6rem 0.8rem',
+                        background: 'rgba(99, 102, 241, 0.1)',
+                        border: '1px solid rgba(99, 102, 241, 0.3)',
+                        borderRadius: '8px',
+                        fontSize: '0.85rem',
+                        color: 'var(--color-text-dim)'
+                    }}>
+                        <Link size={14} />
+                        Derived from: <strong style={{ color: 'white' }}>{sourceHabit ? sourceHabit.title : habit.derivedFrom}</strong>
+                    </div>
+                )}
 
-                    {/* Title */}
+                <form onSubmit={handleSubmit}>
                     <div style={{ marginBottom: '1rem' }}>
                         <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem' }}>Title</label>
                         <input
@@ -116,81 +134,55 @@ export default function EditHabitForm({ habit, log, date, onClose, onLogUpdate }
                             maxLength={50}
                             value={title}
                             onChange={(e) => setTitle(e.target.value)}
-                            className="input-field"
-                            style={{
-                                width: '100%',
-                                padding: '0.8rem',
-                                background: 'rgba(0,0,0,0.2)',
-                                border: '1px solid var(--glass-border)',
-                                borderRadius: '8px',
-                                color: 'white',
-                                outline: 'none'
-                            }}
+                            style={inputStyle}
                         />
                     </div>
 
-                    {/* Target & Current Value */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-                        <div>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem' }}>Target Goal</label>
-                            <input
-                                type="number"
-                                min="1"
-                                value={targetCount}
-                                onChange={(e) => setTargetCount(e.target.value)}
-                                style={{
-                                    width: '100%',
-                                    padding: '0.8rem',
-                                    background: 'rgba(0,0,0,0.2)',
-                                    border: '1px solid var(--glass-border)',
-                                    borderRadius: '8px',
-                                    color: 'white',
-                                    outline: 'none'
-                                }}
-                            />
-                        </div>
-                        <div>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: 'var(--color-primary)' }}>Today's Value</label>
-                            <input
-                                type="number"
-                                min="0"
-                                value={currentValue}
-                                onChange={(e) => setCurrentValue(e.target.value)}
-                                style={{
-                                    width: '100%',
-                                    padding: '0.8rem',
-                                    background: 'rgba(var(--color-primary-rgb), 0.1)', // Slight highlight
-                                    border: '1px solid var(--color-primary)',
-                                    borderRadius: '8px',
-                                    color: 'white',
-                                    fontWeight: 'bold',
-                                    outline: 'none'
-                                }}
-                            />
-                        </div>
-                    </div>
-
-                    {/* Increments */}
-                    <div style={{ marginBottom: '2rem' }}>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: 'var(--color-text-dim)' }}>
-                            Custom Increments (e.g. 5, 10)
+                    <div style={{ marginBottom: isDerived ? '2rem' : '1rem' }}>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem' }}>
+                            {isDerived ? 'Derived target' : 'Target Goal'}
                         </label>
                         <input
-                            type="text"
-                            value={incrementsStr}
-                            onChange={(e) => setIncrementsStr(e.target.value)}
-                            placeholder="1"
-                            style={{
-                                width: '100%',
-                                padding: '0.8rem',
-                                background: 'rgba(0,0,0,0.2)',
-                                border: '1px solid var(--glass-border)',
-                                borderRadius: '8px',
-                                color: 'white',
-                                outline: 'none'
-                            }}
+                            type="number"
+                            min="1"
+                            value={targetCount}
+                            onChange={(e) => setTargetCount(e.target.value)}
+                            style={inputStyle}
                         />
                     </div>
+
+                    {!isDerived && (
+                        <>
+                            <div style={{ marginBottom: '1rem' }}>
+                                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: 'var(--color-primary)' }}>Today's Value</label>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    value={currentValue}
+                                    onChange={(e) => setCurrentValue(e.target.value)}
+                                    style={{
+                                        ...inputStyle,
+                                        background: 'rgba(var(--color-primary-rgb), 0.1)',
+                                        border: '1px solid var(--color-primary)',
+                                        fontWeight: 'bold',
+                                    }}
+                                />
+                            </div>
+
+                            <div style={{ marginBottom: '2rem' }}>
+                                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: 'var(--color-text-dim)' }}>
+                                    Custom Increments (e.g. 5, 10)
+                                </label>
+                                <input
+                                    type="text"
+                                    value={incrementsStr}
+                                    onChange={(e) => setIncrementsStr(e.target.value)}
+                                    placeholder="1"
+                                    style={inputStyle}
+                                />
+                            </div>
+                        </>
+                    )}
 
                     <div style={{ display: 'flex', gap: '1rem' }}>
                         <button

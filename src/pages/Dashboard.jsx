@@ -9,6 +9,7 @@ import EditHabitForm from '../components/EditHabitForm';
 import HabitDetails from '../components/HabitDetails';
 import { format, addDays, subDays, isSameDay } from 'date-fns';
 import { Plus, ChevronLeft, ChevronRight, Calendar, ChevronsRight, User } from 'lucide-react';
+import { getEffectiveLogs, sortHabitsWithDerivedBelow } from '../utils/habitUtils';
 
 export default function Dashboard() {
   const { user, loading: authLoading, isGuest } = useAuth();
@@ -81,15 +82,20 @@ export default function Dashboard() {
     );
   }
 
-  // Helper to extract log data for the current view date from the habit's "logs" map
+  // Helper to extract log data for the current view date from the habit's "logs" map.
+  // For derived habits, computes a virtual log from the source habit's data.
   const getHabitLogForView = (habit) => {
     const key = getPeriodKey(currentDate, habit.type);
+    if (habit.derivedFrom) {
+      const effectiveLogs = getEffectiveLogs(habit, habits);
+      return effectiveLogs[key] || null;
+    }
     return habit.logs?.[key] || null;
   };
 
-  const dailyHabits = habits.filter(h => h.type === 'daily').sort((a, b) => a.title.localeCompare(b.title));
-  const weeklyHabits = habits.filter(h => h.type === 'weekly').sort((a, b) => a.title.localeCompare(b.title));
-  const monthlyHabits = habits.filter(h => h.type === 'monthly').sort((a, b) => a.title.localeCompare(b.title));
+  const dailyHabits = sortHabitsWithDerivedBelow(habits.filter(h => h.type === 'daily'));
+  const weeklyHabits = sortHabitsWithDerivedBelow(habits.filter(h => h.type === 'weekly'));
+  const monthlyHabits = sortHabitsWithDerivedBelow(habits.filter(h => h.type === 'monthly'));
 
   return (
     <div 
@@ -237,6 +243,7 @@ export default function Dashboard() {
               date={currentDate}
               onEdit={setEditingHabit}
               onClick={() => setSelectedHabit(habit)}
+              isDerived={!!habit.derivedFrom}
             />
           ))
         )}
@@ -255,6 +262,7 @@ export default function Dashboard() {
                 date={currentDate}
                 onEdit={setEditingHabit}
                 onClick={() => setSelectedHabit(habit)}
+                isDerived={!!habit.derivedFrom}
               />
             ))}
           </section>
@@ -274,6 +282,7 @@ export default function Dashboard() {
                 date={currentDate}
                 onEdit={setEditingHabit}
                 onClick={() => setSelectedHabit(habit)}
+                isDerived={!!habit.derivedFrom}
               />
             ))}
           </section>

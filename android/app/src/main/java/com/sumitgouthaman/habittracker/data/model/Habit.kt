@@ -17,4 +17,5 @@ data class Habit(
     val logs: Map<String, LogEntry> = emptyMap(),
     // Firestore serialises array numbers as Long; convert to Int in the UI layer.
     val increments: List<Long> = emptyList(),
+    val derivedFrom: String? = null,
 )

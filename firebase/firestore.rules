@@ -4,7 +4,7 @@ service cloud.firestore {
 
     function isValidHabit() {
       let habit = request.resource.data;
-      return habit.keys().hasOnly(['id', 'title', 'type', 'targetCount', 'createdAt', 'archived', 'logs', 'increments', 'frequency']) &&
+      return habit.keys().hasOnly(['id', 'title', 'type', 'targetCount', 'createdAt', 'archived', 'logs', 'increments', 'frequency', 'derivedFrom']) &&
              // String Constraints
              habit.title is string && habit.title.size() > 0 && habit.title.size() <= 60 &&
              habit.type is string && (habit.type == 'daily' || habit.type == 'weekly' || habit.type == 'monthly') &&
@@ -13,6 +13,8 @@ service cloud.firestore {
              ( !habit.keys().hasAny(['frequency']) || habit.frequency is string ) &&
              // Optional Arrays
              ( !habit.keys().hasAny(['increments']) || habit.increments is list ) &&
+             // Optional derivedFrom
+             ( !habit.keys().hasAny(['derivedFrom']) || habit.derivedFrom is string ) &&
              // Number Constraints
              habit.targetCount is number && habit.targetCount > 0 &&
              // Timestamp Constraints

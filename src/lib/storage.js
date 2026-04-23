@@ -48,22 +48,39 @@ export { hasLocalData, getLocalHabitsForSync, clearLocalData } from "./localDb";
 
 // Export Firebase functions for sync operations
 export const syncLocalToFirebase = async (userId, localHabits) => {
-    // Import each local habit to Firebase
-    for (const habit of localHabits) {
-        // Generate a new ID for Firebase (local IDs won't work)
+    // Sync non-derived habits first so we can remap derivedFrom IDs
+    const idMap = {};
+
+    const nonDerived = localHabits.filter(h => !h.derivedFrom);
+    const derived = localHabits.filter(h => h.derivedFrom);
+
+    for (const habit of nonDerived) {
         const habitData = {
             title: habit.title,
             type: habit.type,
             targetCount: habit.targetCount,
             logs: habit.logs || {},
             archived: habit.archived || false,
-            // Preserve original creation time if available
             createdAt: habit.createdAt
         };
-
-        // If habit has frequency or increments, include them
         if (habit.frequency) habitData.frequency = habit.frequency;
         if (habit.increments) habitData.increments = habit.increments;
+
+        const newId = await firebaseDb.createHabit(userId, habitData);
+        idMap[habit.id] = newId;
+    }
+
+    for (const habit of derived) {
+        const habitData = {
+            title: habit.title,
+            type: habit.type,
+            targetCount: habit.targetCount,
+            logs: {},
+            archived: habit.archived || false,
+            createdAt: habit.createdAt,
+            derivedFrom: idMap[habit.derivedFrom] || habit.derivedFrom
+        };
+        if (habit.frequency) habitData.frequency = habit.frequency;
 
         await firebaseDb.createHabit(userId, habitData);
     }

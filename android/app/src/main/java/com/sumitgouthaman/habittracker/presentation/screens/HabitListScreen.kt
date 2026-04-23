@@ -66,6 +66,7 @@ import com.sumitgouthaman.habittracker.data.repository.SettingsRepository
 import com.sumitgouthaman.habittracker.presentation.viewmodel.HabitViewModel
 import com.sumitgouthaman.habittracker.util.ReminderManager
 import com.sumitgouthaman.habittracker.util.getPeriodKey
+import com.sumitgouthaman.habittracker.util.sortHabitsWithDerivedBelow
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.flow.first
@@ -134,9 +135,9 @@ fun HabitListScreen(
                     }
 
                     else -> {
-                        val daily = habits!!.filter { it.type == "daily" }.sortedBy { it.title }
-                        val weekly = habits!!.filter { it.type == "weekly" }.sortedBy { it.title }
-                        val monthly = habits!!.filter { it.type == "monthly" }.sortedBy { it.title }
+                        val daily = sortHabitsWithDerivedBelow(habits!!.filter { it.type == "daily" })
+                        val weekly = sortHabitsWithDerivedBelow(habits!!.filter { it.type == "weekly" })
+                        val monthly = sortHabitsWithDerivedBelow(habits!!.filter { it.type == "monthly" })
 
                         if (daily.isNotEmpty()) {
                             item {
@@ -438,10 +439,11 @@ private fun HabitCard(
     modifier: Modifier = Modifier,
     transformation: SurfaceTransformation? = null,
 ) {
+    val isDerived = habit.derivedFrom != null
     if (habit.targetCount == 1) {
-        BinaryHabitCard(habit, date, onToggle, modifier, transformation)
+        BinaryHabitCard(habit, date, onToggle, modifier, transformation, isDerived)
     } else {
-        CountHabitCard(habit, date, onIncrement, modifier, transformation)
+        CountHabitCard(habit, date, onIncrement, modifier, transformation, isDerived)
     }
 }
 
@@ -454,13 +456,14 @@ private fun BinaryHabitCard(
     onToggle: () -> Unit,
     modifier: Modifier = Modifier,
     transformation: SurfaceTransformation? = null,
+    isDerived: Boolean = false,
 ) {
     val key = getPeriodKey(date = date, type = habit.type)
     val currentValue = habit.logs[key]?.value ?: 0
     val isCompleted = habit.logs[key]?.completed == true
 
     Card(
-        onClick = onToggle,
+        onClick = { if (!isDerived) onToggle() },
         modifier = modifier,
         transformation = transformation,
         colors = CardDefaults.cardColors(
@@ -481,11 +484,14 @@ private fun BinaryHabitCard(
                     overflow = TextOverflow.Ellipsis,
                 )
                 Spacer(Modifier.height(2.dp))
-                Text(
-                    text = "$currentValue / ${habit.targetCount}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        text = "$currentValue / ${habit.targetCount}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    if (isDerived) AutoBadge()
+                }
             }
             CheckIndicator(isCompleted = isCompleted)
         }
@@ -528,6 +534,7 @@ private fun CountHabitCard(
     onIncrement: (Int) -> Unit,
     modifier: Modifier = Modifier,
     transformation: SurfaceTransformation? = null,
+    isDerived: Boolean = false,
 ) {
     val key = getPeriodKey(date = date, type = habit.type)
     val currentValue = habit.logs[key]?.value ?: 0
@@ -540,7 +547,7 @@ private fun CountHabitCard(
         .take(4)
 
     Card(
-        onClick = { onIncrement(incrementValues.first()) },
+        onClick = { if (!isDerived) onIncrement(incrementValues.first()) },
         modifier = modifier,
         transformation = transformation,
         colors = CardDefaults.cardColors(
@@ -562,6 +569,10 @@ private fun CountHabitCard(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            if (isDerived) {
+                Spacer(Modifier.width(4.dp))
+                AutoBadge()
+            }
             if (multiplier >= 1) {
                 Spacer(Modifier.width(6.dp))
                 Box(
@@ -580,18 +591,37 @@ private fun CountHabitCard(
             }
         }
 
-        Spacer(Modifier.height(10.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-        ) {
-            incrementValues.forEach { amount ->
-                IncrementButton(amount = amount, onClick = { onIncrement(amount) })
+        if (!isDerived) {
+            Spacer(Modifier.height(10.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+            ) {
+                incrementValues.forEach { amount ->
+                    IncrementButton(amount = amount, onClick = { onIncrement(amount) })
+                }
             }
         }
 
         ProgressLine(currentValue = currentValue, targetCount = habit.targetCount, isCompleted = isCompleted)
+    }
+}
+
+/** Small badge shown on derived (auto-calculated) habit cards. */
+@Composable
+private fun AutoBadge() {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(3.dp))
+            .background(Color(0x266366F1))
+            .padding(horizontal = 4.dp, vertical = 1.dp),
+    ) {
+        Text(
+            text = "auto",
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Medium,
+            color = Color(0xFFA5B4FC),
+        )
     }
 }
 

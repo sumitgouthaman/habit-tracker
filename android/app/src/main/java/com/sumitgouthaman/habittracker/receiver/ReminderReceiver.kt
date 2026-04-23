@@ -13,6 +13,7 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.sumitgouthaman.habittracker.data.repository.HabitRepository
 import com.sumitgouthaman.habittracker.presentation.MainActivity
+import com.sumitgouthaman.habittracker.util.getEffectiveLogs
 import com.sumitgouthaman.habittracker.util.getPeriodKey
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -33,11 +34,15 @@ class ReminderReceiver : BroadcastReceiver() {
                 val today = LocalDate.now()
 
                 val incompleteCount = habits.count { habit ->
-                    habit.type == "daily" && habit.targetCount > 0 && run {
-                        val key = getPeriodKey(date = today, type = "daily")
-                        val log = habit.logs[key]
-                        log == null || !log.completed
+                    if (habit.type != "daily" || habit.targetCount <= 0) return@count false
+                    val key = getPeriodKey(date = today, type = "daily")
+                    val effectiveLogs = if (habit.derivedFrom != null) {
+                        getEffectiveLogs(habit, habits)
+                    } else {
+                        habit.logs
                     }
+                    val log = effectiveLogs[key]
+                    log == null || !log.completed
                 }
 
                 Log.d(TAG, "Checked ${habits.size} habits – $incompleteCount daily incomplete")

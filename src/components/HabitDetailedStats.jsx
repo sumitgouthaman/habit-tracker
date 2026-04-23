@@ -12,14 +12,22 @@ import {
 } from 'date-fns';
 import { ChevronLeft, ChevronRight, X, Check } from 'lucide-react';
 import { getPeriodKey } from '../lib/storage';
-import { getLogValue, calculateStreak, calculateBestStreak, calculateTotal } from '../utils/habitUtils';
+import { getLogValue, calculateStreak, calculateBestStreak, calculateTotal, getEffectiveLogs } from '../utils/habitUtils';
 import { WEEK_STARTS_ON } from '../lib/constants';
+import { useHabits } from '../context/HabitContext';
 import {
     BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, ReferenceLine
 } from 'recharts';
 
 export default function HabitDetailedStats({ habit, onClose }) {
+    const { habits } = useHabits();
     const [viewDate, setViewDate] = useState(new Date());
+
+    // For derived habits, use virtual logs computed from the source habit
+    const displayHabit = useMemo(() => {
+        if (!habit.derivedFrom) return habit;
+        return { ...habit, logs: getEffectiveLogs(habit, habits) };
+    }, [habit, habits]);
 
     // --- Navigation ---
     const handlePrev = () => {
@@ -36,7 +44,7 @@ export default function HabitDetailedStats({ habit, onClose }) {
 
     // --- All-time metrics ---
     const metrics = useMemo(() => {
-        const logs = habit.logs || {};
+        const logs = displayHabit.logs || {};
         const allKeys = Object.keys(logs).sort();
         const completedKeys = allKeys.filter(k => logs[k]?.completed);
         const total = completedKeys.length;
@@ -82,15 +90,15 @@ export default function HabitDetailedStats({ habit, onClose }) {
 
         return {
             total,
-            currentStreak: calculateStreak(habit),
-            bestStreak: calculateBestStreak(habit),
+            currentStreak: calculateStreak(displayHabit),
+            bestStreak: calculateBestStreak(displayHabit),
             completionRate,
             activeSince: activeSinceDate ? format(activeSinceDate, 'MMM yyyy') : '—',
             avgValue: avgValue.toFixed(1),
             personalBest,
             timesDoubled,
         };
-    }, [habit, isBinary]);
+    }, [displayHabit, isBinary]);
 
     // --- Calendar / Period grid (reused from HabitDetails) ---
     const calendarDays = useMemo(() => {
@@ -100,7 +108,7 @@ export default function HabitDetailedStats({ habit, onClose }) {
         const startDate = startOfWeek(monthStart, { weekStartsOn: WEEK_STARTS_ON });
         const endDate = endOfWeek(monthEnd, { weekStartsOn: WEEK_STARTS_ON });
         return eachDayOfInterval({ start: startDate, end: endDate }).map(day => {
-            const value = getLogValue(habit, day);
+            const value = getLogValue(displayHabit, day);
             const target = habit.targetCount || 1;
             const isCompleted = value >= target;
             return {
@@ -112,7 +120,7 @@ export default function HabitDetailedStats({ habit, onClose }) {
                 multiplier: target > 0 ? value / target : 0,
             };
         });
-    }, [viewDate, habit]);
+    }, [viewDate, displayHabit]);
 
     const periodItems = useMemo(() => {
         if (habit.type === 'daily') return [];
@@ -128,11 +136,11 @@ export default function HabitDetailedStats({ habit, onClose }) {
         }
         return intervals.map(date => {
             const key = getPeriodKey(date, dateFormat);
-            const value = habit.logs?.[key]?.value || 0;
+            const value = displayHabit.logs?.[key]?.value || 0;
             const target = habit.targetCount || 1;
             return { date, label: format(date, displayFormat), value, isCompleted: value >= target };
         });
-    }, [viewDate, habit]);
+    }, [viewDate, displayHabit]);
 
     // --- Monthly completion rate chart (daily habits) ---
     const monthlyChartData = useMemo(() => {
@@ -145,11 +153,11 @@ export default function HabitDetailedStats({ habit, onClose }) {
             const daysInMonth = getDaysInMonth(monthStart);
             const monthEnd = endOfMonth(monthStart);
             const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
-            const completed = days.filter(d => getLogValue(habit, d) >= (habit.targetCount || 1)).length;
+            const completed = days.filter(d => getLogValue(displayHabit, d) >= (habit.targetCount || 1)).length;
             const rate = Math.round((completed / daysInMonth) * 100);
             return { month: format(monthStart, 'MMM'), rate, completed, total: daysInMonth };
         });
-    }, [viewDate, habit]);
+    }, [viewDate, displayHabit]);
 
     // Monthly chart for weekly/monthly habits (quantitative)
     const periodChartData = useMemo(() => {
@@ -167,15 +175,15 @@ export default function HabitDetailedStats({ habit, onClose }) {
         }
         return intervals.map(date => {
             const key = getPeriodKey(date, dateFormat);
-            const value = habit.logs?.[key]?.value || 0;
+            const value = displayHabit.logs?.[key]?.value || 0;
             return { label: format(date, displayFormat), value };
         });
-    }, [viewDate, habit, isBinary]);
+    }, [viewDate, displayHabit, isBinary]);
 
     // --- Day-of-week analysis (daily habits only) ---
     const dowData = useMemo(() => {
         if (habit.type !== 'daily') return [];
-        const logs = habit.logs || {};
+        const logs = displayHabit.logs || {};
         const allKeys = Object.keys(logs);
         // 0=Sun,1=Mon,...,6=Sat in date-fns getDay; reorder Mon-Sun
         const counts = Array(7).fill(0);   // total days per DOW
@@ -197,7 +205,7 @@ export default function HabitDetailedStats({ habit, onClose }) {
             completed: completed[i],
             total: counts[i],
         }));
-    }, [habit]);
+    }, [displayHabit]);
 
     const navLabel = habit.type === 'daily'
         ? format(viewDate, 'MMMM yyyy')

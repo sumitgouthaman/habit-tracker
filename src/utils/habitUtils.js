@@ -1,6 +1,6 @@
-import { format, subDays, startOfWeek, subWeeks, startOfMonth, subMonths, isSameDay, parseISO, differenceInDays } from 'date-fns';
+import { format, subDays, startOfWeek, endOfMonth, addDays, startOfMonth, subMonths, isSameDay, parseISO, differenceInDays } from 'date-fns';
 import { getPeriodKey } from '../lib/storage';
-import { MAX_STREAK_LOOKBACK_DAYS } from '../lib/constants';
+import { MAX_STREAK_LOOKBACK_DAYS, WEEK_STARTS_ON } from '../lib/constants';
 
 /**
  * Calculates the current streak for a daily habit.
@@ -152,4 +152,123 @@ export function getLogValue(habit, date) {
 export function isHabitCompleted(habit, date) {
     const key = getPeriodKey(date, habit.type);
     return habit.logs?.[key]?.completed || false;
+}
+
+/**
+ * Returns all source-type period keys that fall within a given derived period.
+ * Used for cross-type derived habit aggregation.
+ */
+function getDerivedPeriodSourceKeys(derivedPeriodKey, derivedType, sourceType) {
+    if (derivedType === 'weekly' && sourceType === 'daily') {
+        const weekStart = parseISO(derivedPeriodKey);
+        return Array.from({ length: 7 }, (_, i) => format(addDays(weekStart, i), 'yyyy-MM-dd'));
+    }
+    if (derivedType === 'monthly' && sourceType === 'daily') {
+        const monthStart = parseISO(derivedPeriodKey + '-01');
+        const monthEnd = endOfMonth(monthStart);
+        const days = [];
+        let current = monthStart;
+        while (current <= monthEnd) {
+            days.push(format(current, 'yyyy-MM-dd'));
+            current = addDays(current, 1);
+        }
+        return days;
+    }
+    if (derivedType === 'monthly' && sourceType === 'weekly') {
+        // All Monday-keys whose Monday falls within the given month
+        const monthStart = parseISO(derivedPeriodKey + '-01');
+        const monthEnd = endOfMonth(monthStart);
+        const weeks = [];
+        let current = startOfWeek(monthStart, { weekStartsOn: WEEK_STARTS_ON });
+        while (current <= monthEnd) {
+            if (current >= monthStart) {
+                weeks.push(format(current, 'yyyy-MM-dd'));
+            }
+            current = addDays(current, 7);
+        }
+        return weeks;
+    }
+    return [];
+}
+
+/**
+ * Returns the effective logs for a habit, computing virtual logs for derived habits.
+ * For regular habits, returns habit.logs as-is.
+ * For same-type derived habits, remaps completion based on the derived target.
+ * For cross-type derived habits, aggregates source completions within each derived period.
+ *
+ * @param {Object} habit - The habit (possibly derived)
+ * @param {Array} allHabits - Full habit list (needed to find the source habit)
+ */
+export function getEffectiveLogs(habit, allHabits) {
+    if (!habit.derivedFrom) return habit.logs || {};
+
+    const sourceHabit = allHabits?.find(h => h.id === habit.derivedFrom);
+    if (!sourceHabit) return {};
+
+    const sourceLogs = sourceHabit.logs || {};
+
+    if (habit.type === sourceHabit.type) {
+        // Same-type: identical periods, just different completion threshold
+        const result = {};
+        for (const [key, log] of Object.entries(sourceLogs)) {
+            result[key] = { ...log, completed: log.value >= habit.targetCount };
+        }
+        return result;
+    }
+
+    // Cross-type: count how many source completions fall within each derived period
+    const sourceKeys = Object.keys(sourceLogs);
+    if (sourceKeys.length === 0) return {};
+
+    // Determine which derived-period keys we need to compute
+    const derivedPeriodKeySet = new Set();
+    for (const sourceKey of sourceKeys) {
+        // Parse source key to a date (daily: 'yyyy-MM-dd', weekly: 'yyyy-MM-dd', monthly: 'yyyy-MM')
+        const date = sourceKey.length === 7
+            ? parseISO(sourceKey + '-01')
+            : parseISO(sourceKey);
+        derivedPeriodKeySet.add(getPeriodKey(date, habit.type));
+    }
+
+    const result = {};
+    for (const derivedKey of derivedPeriodKeySet) {
+        const sourceKeysList = getDerivedPeriodSourceKeys(derivedKey, habit.type, sourceHabit.type);
+        const hasAnyLog = sourceKeysList.some(k => sourceLogs[k] !== undefined);
+        if (!hasAnyLog) continue;
+        const count = sourceKeysList.filter(k => sourceLogs[k]?.completed).length;
+        result[derivedKey] = { value: count, completed: count >= habit.targetCount, updatedAt: null };
+    }
+    return result;
+}
+
+/**
+ * Sorts habits so derived habits appear immediately below their source habit.
+ * Non-derived habits are sorted alphabetically. Each source habit is followed
+ * by its derived children (also alphabetically). Derived habits whose source
+ * is not in the list fall at the end.
+ *
+ * @param {Array} habits - Habits of a single type group
+ */
+export function sortHabitsWithDerivedBelow(habits) {
+    const roots = habits.filter(h => !h.derivedFrom).sort((a, b) => a.title.localeCompare(b.title));
+    const derived = habits.filter(h => h.derivedFrom);
+
+    const result = [];
+    for (const root of roots) {
+        result.push(root);
+        const children = derived
+            .filter(d => d.derivedFrom === root.id)
+            .sort((a, b) => a.title.localeCompare(b.title));
+        result.push(...children);
+    }
+
+    // Derived habits whose source is not in this group (e.g. archived) go at the end
+    const placed = new Set(result.map(h => h.id));
+    derived
+        .filter(d => !placed.has(d.id))
+        .sort((a, b) => a.title.localeCompare(b.title))
+        .forEach(d => result.push(d));
+
+    return result;
 }

@@ -1,4 +1,4 @@
-import { Check, Plus, Clock } from 'lucide-react';
+import { Check, Plus, Clock, Link } from 'lucide-react';
 import { useHabits } from '../context/HabitContext';
 import { useState, useEffect, useRef } from 'react';
 import clsx from 'clsx';
@@ -7,7 +7,7 @@ import { EVENING_WARNING_HOUR, DEBOUNCE_DELAY_MS, STREAK_MILESTONES } from '../l
 import { calculateStreak } from '../utils/habitUtils';
 import ConfettiCelebration from './ConfettiCelebration';
 
-export default function HabitCard({ habit, log, date, onEdit, onClick }) {
+export default function HabitCard({ habit, log, date, onEdit, onClick, isDerived }) {
     const { storage } = useHabits();
     const [loading, setLoading] = useState(false);
 
@@ -142,6 +142,23 @@ export default function HabitCard({ habit, log, date, onEdit, onClick }) {
                         <h3 style={{ fontSize: '1.1rem', marginBottom: '0.2rem' }}>{habit.title}</h3>
                         <div style={{ fontSize: '0.85rem', color: 'var(--color-text-dim)', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                             <span>{habit.type.charAt(0).toUpperCase() + habit.type.slice(1)} • {currentValue} / {target}</span>
+                            {isDerived && (
+                                <span style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '3px',
+                                    background: 'rgba(99, 102, 241, 0.15)',
+                                    color: '#a5b4fc',
+                                    fontSize: '0.7rem',
+                                    fontWeight: 600,
+                                    padding: '2px 6px',
+                                    borderRadius: '4px',
+                                    border: '1px solid rgba(99, 102, 241, 0.3)'
+                                }}>
+                                    <Link size={10} />
+                                    auto
+                                </span>
+                            )}
                             {isOverachieved && (
                                 <span style={{
                                     background: 'linear-gradient(135deg, #fbbf24, #f59e0b)',
@@ -179,7 +196,7 @@ export default function HabitCard({ habit, log, date, onEdit, onClick }) {
                     </div>
 
                     <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                        {habit.targetCount === 1 ? (
+                        {!isDerived && habit.targetCount === 1 && (
                             // Case 1: Binary Task (Checkmark)
                             <button
                                 onClick={(e) => { e.stopPropagation(); handleUpdate(isCompleted ? 0 : 1); }}
@@ -200,7 +217,8 @@ export default function HabitCard({ habit, log, date, onEdit, onClick }) {
                             >
                                 <Check size={24} strokeWidth={3} />
                             </button>
-                        ) : (
+                        )}
+                        {!isDerived && habit.targetCount > 1 && (
                             // Case 2: Count Task (Increments)
                             (habit.increments && habit.increments.length > 0 ? habit.increments : [1]).map((inc, idx) => (
                                 <button
@@ -225,6 +243,22 @@ export default function HabitCard({ habit, log, date, onEdit, onClick }) {
                                     +{inc}
                                 </button>
                             ))
+                        )}
+                        {isDerived && isCompleted && (
+                            <div style={{
+                                width: '44px',
+                                height: '44px',
+                                borderRadius: '50%',
+                                border: '2px solid var(--color-success)',
+                                background: 'var(--color-success)',
+                                color: '#000',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                boxShadow: '0 0 10px rgba(0,255,0,0.2)'
+                            }}>
+                                <Check size={24} strokeWidth={3} />
+                            </div>
                         )}
                     </div>
                 </div>
