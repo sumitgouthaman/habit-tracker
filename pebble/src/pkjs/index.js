@@ -383,6 +383,8 @@ function updateFirestoreLog(habitId, value, targetCount, type, periodKey) {
     xhr.onload = function () {
       if (xhr.status >= 200 && xhr.status < 300) {
         console.log('Successfully updated habit ' + habitId + ' on Firestore');
+        // Re-sync to recalculate derived habits that depend on the updated habit
+        syncHabits(s_currentDayOffset);
       } else {
         console.error('Failed to update habit on Firestore: ' + xhr.status + ' ' + xhr.responseText);
       }
@@ -396,8 +398,11 @@ function updateFirestoreLog(habitId, value, targetCount, type, periodKey) {
   });
 }
 
+var s_currentDayOffset = 0;
+
 function syncHabits(dayOffset) {
   var offset = (typeof dayOffset === 'number') ? dayOffset : 0;
+  s_currentDayOffset = offset;
   var targetDate = new Date();
   if (offset !== 0) {
     targetDate.setDate(targetDate.getDate() + offset);
