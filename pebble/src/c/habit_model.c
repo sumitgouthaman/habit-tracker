@@ -3,9 +3,9 @@
 
 #define PERSIST_KEY_VERSION 99
 #define PERSIST_KEY_COUNT   100
-#define PERSIST_KEY_DATA    101
 #define PERSIST_KEY_OFFSET  102
-#define CURRENT_STORAGE_VERSION 20260920
+#define PERSIST_KEY_HABIT_BASE 1000
+#define CURRENT_STORAGE_VERSION 20260921
 
 static Habit s_habits[MAX_HABITS];
 static int s_habit_count = 0;
@@ -16,6 +16,10 @@ static void notify_change(void) {
   if (s_change_callback) {
     s_change_callback();
   }
+}
+
+void habit_model_notify(void) {
+  notify_change();
 }
 
 void habit_model_init(void) {
@@ -70,21 +74,28 @@ Habit* habit_model_get_by_type_index(HabitType type, int type_index) {
   return NULL;
 }
 
-void habit_model_add_or_update(const Habit* habit) {
+void habit_model_add_or_update_silent(const Habit* habit) {
   if (!habit) return;
 
   for (int i = 0; i < s_habit_count; i++) {
     if (strcmp(s_habits[i].id, habit->id) == 0) {
       s_habits[i] = *habit;
-      notify_change();
       return;
     }
   }
 
   if (s_habit_count < MAX_HABITS) {
     s_habits[s_habit_count++] = *habit;
-    notify_change();
   }
+}
+
+void habit_model_add_or_update(const Habit* habit) {
+  habit_model_add_or_update_silent(habit);
+  notify_change();
+}
+
+void habit_model_clear_silent(void) {
+  s_habit_count = 0;
 }
 
 void habit_model_clear(void) {
@@ -130,27 +141,32 @@ void habit_model_reset_habit(Habit* habit) {
 void habit_model_save(void) {
   persist_write_int(PERSIST_KEY_VERSION, CURRENT_STORAGE_VERSION);
   persist_write_int(PERSIST_KEY_COUNT, s_habit_count);
-  if (s_habit_count > 0) {
-    persist_write_data(PERSIST_KEY_DATA, s_habits, s_habit_count * sizeof(Habit));
+  for (int i = 0; i < s_habit_count; i++) {
+    persist_write_data(PERSIST_KEY_HABIT_BASE + i, &s_habits[i], sizeof(Habit));
   }
 }
 
 void habit_model_load(void) {
   if (persist_exists(PERSIST_KEY_VERSION) &&
       persist_read_int(PERSIST_KEY_VERSION) == CURRENT_STORAGE_VERSION &&
-      persist_exists(PERSIST_KEY_COUNT) &&
-      persist_exists(PERSIST_KEY_DATA)) {
+      persist_exists(PERSIST_KEY_COUNT)) {
     int count = persist_read_int(PERSIST_KEY_COUNT);
     if (count > 0 && count <= MAX_HABITS) {
-      int read = persist_read_data(PERSIST_KEY_DATA, s_habits, count * sizeof(Habit));
-      if (read > 0) {
-        s_habit_count = count;
-        return;
+      s_habit_count = 0;
+      for (int i = 0; i < count; i++) {
+        if (persist_exists(PERSIST_KEY_HABIT_BASE + i)) {
+          int read = persist_read_data(PERSIST_KEY_HABIT_BASE + i, &s_habits[i], sizeof(Habit));
+          if (read == sizeof(Habit)) {
+            s_habit_count++;
+          }
+        }
       }
+      return;
     }
   }
   s_habit_count = 0;
 }
+
 
 int habit_model_get_day_offset(void) {
   return s_day_offset;
@@ -162,19 +178,25 @@ void habit_model_set_day_offset(int offset) {
 }
 
 void habit_model_get_date_string(int day_offset, char* buffer, size_t buffer_size) {
+  memset(buffer, 0, buffer_size);
   if (day_offset == 0) {
     strncpy(buffer, "Today", buffer_size - 1);
-    buffer[buffer_size - 1] = '\0';
     return;
   } else if (day_offset == -1) {
     strncpy(buffer, "Yesterday", buffer_size - 1);
-    buffer[buffer_size - 1] = '\0';
+    return;
+  } else if (day_offset == 1) {
+    strncpy(buffer, "Tomorrow", buffer_size - 1);
     return;
   }
 
   time_t now = time(NULL) + (day_offset * 86400);
   struct tm* tm = localtime(&now);
-  strftime(buffer, buffer_size, "%b %e", tm);
+  if (tm) {
+    strftime(buffer, buffer_size, "%a, %b %d", tm);
+  } else {
+    snprintf(buffer, buffer_size, "Day %d", day_offset);
+  }
 }
 
 void habit_model_get_period_key(HabitType type, int day_offset, char* buffer, size_t buffer_size) {

@@ -138,7 +138,90 @@ function sendHabitsToWatch(habits, index) {
   });
 }
 
-function fetchHabitsFromFirestore(userId, idToken) {
+function pad2(n) {
+  return (n < 10 ? '0' : '') + n;
+}
+
+function formatDate(d) {
+  return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+}
+
+function getMondayDate(d) {
+  var day = d.getDay(); // 0 is Sunday
+  var diff = (day + 6) % 7; // Monday is 0, Sunday is 6
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate() - diff);
+}
+
+function computeDerivedLog(habit, sourceHabit, evalDate) {
+  if (!sourceHabit || !sourceHabit.parsedLogs) {
+    return { value: 0, completed: false };
+  }
+
+  // Same-type derived: identical periods, just compare against derived targetCount
+  if (habit.rawType === sourceHabit.rawType) {
+    var periodKey = getPeriodKey(evalDate, habit.typeNum);
+    var log = sourceHabit.parsedLogs[periodKey];
+    var val = log ? (log.value || 0) : 0;
+    return { value: val, completed: val >= habit.targetCount };
+  }
+
+  // Weekly derived from Daily: count how many days this week the daily habit was completed
+  if (habit.rawType === 'weekly' && sourceHabit.rawType === 'daily') {
+    var monday = getMondayDate(evalDate);
+    var count = 0;
+    for (var i = 0; i < 7; i++) {
+      var curDay = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + i);
+      var dayKey = formatDate(curDay);
+      var log = sourceHabit.parsedLogs[dayKey];
+      if (log && log.completed) {
+        count++;
+      }
+    }
+    return { value: count, completed: count >= habit.targetCount };
+  }
+
+  // Monthly derived from Daily: count how many days this month the daily habit was completed
+  if (habit.rawType === 'monthly' && sourceHabit.rawType === 'daily') {
+    var year = evalDate.getFullYear();
+    var month = evalDate.getMonth();
+    var daysInMonth = new Date(year, month + 1, 0).getDate();
+    var count = 0;
+    for (var d = 1; d <= daysInMonth; d++) {
+      var curDay = new Date(year, month, d);
+      var dayKey = formatDate(curDay);
+      var log = sourceHabit.parsedLogs[dayKey];
+      if (log && log.completed) {
+        count++;
+      }
+    }
+    return { value: count, completed: count >= habit.targetCount };
+  }
+
+  // Monthly derived from Weekly: count how many weeks this month the weekly habit was completed
+  if (habit.rawType === 'monthly' && sourceHabit.rawType === 'weekly') {
+    var year = evalDate.getFullYear();
+    var month = evalDate.getMonth();
+    var monthStart = new Date(year, month, 1);
+    var monthEnd = new Date(year, month + 1, 0);
+    var cur = getMondayDate(monthStart);
+    var count = 0;
+    while (cur <= monthEnd) {
+      if (cur >= monthStart) {
+        var weekKey = formatDate(cur);
+        var log = sourceHabit.parsedLogs[weekKey];
+        if (log && log.completed) {
+          count++;
+        }
+      }
+      cur = new Date(cur.getFullYear(), cur.getMonth(), cur.getDate() + 7);
+    }
+    return { value: count, completed: count >= habit.targetCount };
+  }
+
+  return { value: 0, completed: false };
+}
+
+function fetchHabitsFromFirestore(userId, idToken, targetDate) {
   var url = FIRESTORE_BASE + encodeURIComponent(userId) + '/habits';
   var xhr = new XMLHttpRequest();
   xhr.open('GET', url, true);
@@ -151,9 +234,10 @@ function fetchHabitsFromFirestore(userId, idToken) {
       try {
         var data = JSON.parse(xhr.responseText);
         var docs = data.documents || [];
-        var habits = [];
+        var rawHabitList = [];
+        var rawHabitsMap = {};
 
-        var today = new Date();
+        var evalDate = targetDate || new Date();
 
         for (var i = 0; i < docs.length; i++) {
           var fields = docs[i].fields || {};
@@ -166,7 +250,7 @@ function fetchHabitsFromFirestore(userId, idToken) {
           var rawType = fields.type ? fields.type.stringValue : 'daily';
           var typeNum = (rawType === 'weekly') ? 1 : ((rawType === 'monthly') ? 2 : 0);
           var targetCount = fields.targetCount ? parseInt(fields.targetCount.integerValue || fields.targetCount.doubleValue || 1, 10) : 1;
-          var isDerived = fields.derivedFrom && fields.derivedFrom.stringValue ? 1 : 0;
+          var derivedFromId = (fields.derivedFrom && fields.derivedFrom.stringValue) ? fields.derivedFrom.stringValue : null;
 
           var increments = '1';
           if (fields.increments && fields.increments.arrayValue && fields.increments.arrayValue.values) {
@@ -176,37 +260,69 @@ function fetchHabitsFromFirestore(userId, idToken) {
             increments = incArr.join(',');
           }
 
-          var periodKey = getPeriodKey(today, typeNum);
-          var currentValue = 0;
-          var isCompleted = 0;
-
+          var parsedLogs = {};
           if (fields.logs && fields.logs.mapValue && fields.logs.mapValue.fields) {
-            var periodLog = fields.logs.mapValue.fields[periodKey];
-            if (periodLog && periodLog.mapValue && periodLog.mapValue.fields) {
-              var logFields = periodLog.mapValue.fields;
-              if (logFields.value) {
-                currentValue = parseInt(logFields.value.integerValue || logFields.value.doubleValue || 0, 10);
-              }
-              if (logFields.completed) {
-                isCompleted = logFields.completed.booleanValue ? 1 : 0;
+            var logMap = fields.logs.mapValue.fields;
+            for (var k in logMap) {
+              if (logMap.hasOwnProperty(k) && logMap[k].mapValue && logMap[k].mapValue.fields) {
+                var lf = logMap[k].mapValue.fields;
+                parsedLogs[k] = {
+                  value: parseInt((lf.value && (lf.value.integerValue || lf.value.doubleValue)) || 0, 10),
+                  completed: (lf.completed && lf.completed.booleanValue) ? true : false
+                };
               }
             }
           }
 
-          habits.push({
+          var habitObj = {
             id: habitId,
             title: title,
-            type: typeNum,
-            target: targetCount,
-            value: currentValue,
-            completed: isCompleted,
-            derived: isDerived,
-            increments: increments
+            rawType: rawType,
+            typeNum: typeNum,
+            targetCount: targetCount,
+            derivedFrom: derivedFromId,
+            increments: increments,
+            parsedLogs: parsedLogs
+          };
+
+          rawHabitList.push(habitObj);
+          rawHabitsMap[habitId] = habitObj;
+        }
+
+        var habitsToSend = [];
+        for (var j = 0; j < rawHabitList.length; j++) {
+          var h = rawHabitList[j];
+          var curVal = 0;
+          var isComp = false;
+
+          if (h.derivedFrom) {
+            var sourceHabit = rawHabitsMap[h.derivedFrom];
+            var derivedResult = computeDerivedLog(h, sourceHabit, evalDate);
+            curVal = derivedResult.value;
+            isComp = derivedResult.completed;
+          } else {
+            var periodKey = getPeriodKey(evalDate, h.typeNum);
+            var log = h.parsedLogs[periodKey];
+            if (log) {
+              curVal = log.value;
+              isComp = log.completed;
+            }
+          }
+
+          habitsToSend.push({
+            id: h.id,
+            title: h.title,
+            type: h.typeNum,
+            target: h.targetCount,
+            value: curVal,
+            completed: isComp ? 1 : 0,
+            derived: h.derivedFrom ? 1 : 0,
+            increments: h.increments
           });
         }
 
-        if (habits.length > 0) {
-          sendHabitsToWatch(habits, 0);
+        if (habitsToSend.length > 0) {
+          sendHabitsToWatch(habitsToSend, 0);
           return;
         }
       } catch (err) {
@@ -234,7 +350,7 @@ function updateFirestoreLog(habitId, value, targetCount, type, periodKey) {
 
     var isCompleted = (value >= targetCount);
     var url = FIRESTORE_BASE + encodeURIComponent(userId) + '/habits/' + encodeURIComponent(habitId) +
-      '?updateMask.fieldPaths=' + encodeURIComponent('logs.' + periodKey);
+      '?updateMask.fieldPaths=' + encodeURIComponent('logs.`' + periodKey + '`');
 
     var payload = {
       fields: {
@@ -277,10 +393,17 @@ function updateFirestoreLog(habitId, value, targetCount, type, periodKey) {
   });
 }
 
-function syncHabits() {
+function syncHabits(dayOffset) {
+  var offset = (typeof dayOffset === 'number') ? dayOffset : 0;
+  var targetDate = new Date();
+  if (offset !== 0) {
+    targetDate.setDate(targetDate.getDate() + offset);
+  }
+  console.log('Syncing habits for dayOffset=' + offset + ' (' + targetDate.toISOString().slice(0, 10) + ')');
+
   getValidToken(function (userId, idToken) {
     if (userId && idToken) {
-      fetchHabitsFromFirestore(userId, idToken);
+      fetchHabitsFromFirestore(userId, idToken, targetDate);
     } else {
       console.log('User not authenticated. Displaying sign-in screen on watch.');
       Pebble.sendAppMessage({ HabitCount: 0 });
@@ -297,8 +420,9 @@ Pebble.addEventListener('ready', function () {
 Pebble.addEventListener('appmessage', function (e) {
   var dict = e.payload || {};
 
-  if (dict.AppReady) {
-    syncHabits();
+  if (dict.AppReady !== undefined || dict.DayOffset !== undefined) {
+    var offset = (dict.DayOffset !== undefined) ? dict.DayOffset : 0;
+    syncHabits(offset);
   }
 
   if (dict.UpdateHabitId) {

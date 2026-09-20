@@ -15,6 +15,40 @@ static Window *s_main_window = NULL;
 static Layer *s_date_header_layer = NULL;
 static MenuLayer *s_menu_layer = NULL;
 
+static bool s_is_loading = false;
+static AppTimer *s_loading_timer = NULL;
+static AppTimer *s_safety_timer = NULL;
+static int s_loading_frame = 0;
+
+static void loading_timer_callback(void *data) {
+  if (!s_is_loading) {
+    s_loading_timer = NULL;
+    return;
+  }
+  s_loading_frame++;
+  if (s_menu_layer) {
+    menu_layer_reload_data(s_menu_layer);
+  }
+  s_loading_timer = app_timer_register(180, loading_timer_callback, NULL);
+}
+
+static void safety_timeout_callback(void *data) {
+  s_safety_timer = NULL;
+  if (s_is_loading) {
+    s_is_loading = false;
+    if (s_loading_timer) {
+      app_timer_cancel(s_loading_timer);
+      s_loading_timer = NULL;
+    }
+    if (s_menu_layer) {
+      menu_layer_reload_data(s_menu_layer);
+    }
+    if (s_date_header_layer) {
+      layer_mark_dirty(s_date_header_layer);
+    }
+  }
+}
+
 static void date_header_update_proc(Layer *layer, GContext *ctx) {
   GRect bounds = layer_get_bounds(layer);
 
@@ -25,7 +59,7 @@ static void date_header_update_proc(Layer *layer, GContext *ctx) {
   graphics_context_set_text_color(ctx, GColorWhite);
   GRect text_rect = GRect(0, (bounds.size.h - 18) / 2, bounds.size.w, 18);
 
-  if (habit_model_get_count() == 0) {
+  if (habit_model_get_count() == 0 && !s_is_loading) {
     graphics_draw_text(ctx, "Habit Tracker",
                        fonts_get_system_font(FONT_KEY_GOTHIC_14_BOLD),
                        text_rect, GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
@@ -44,37 +78,85 @@ static void date_header_update_proc(Layer *layer, GContext *ctx) {
                      text_rect, GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
 }
 
-static uint16_t menu_get_num_sections_callback(MenuLayer *menu_layer, void *data) {
-  if (habit_model_get_count() == 0) {
+typedef struct {
+  HabitType type;
+  bool is_nav;
+  int count;
+} SectionInfo;
+
+static int get_sections(SectionInfo *sections) {
+  if (s_is_loading) {
+    if (sections) {
+      sections[0].is_nav = false;
+      sections[0].count = 1;
+    }
     return 1;
   }
-  return NUM_SECTIONS;
+
+  if (habit_model_get_count() == 0) {
+    if (sections) {
+      sections[0].is_nav = false;
+      sections[0].count = 1;
+    }
+    return 1;
+  }
+
+  int num = 0;
+  int daily = habit_model_get_count_by_type(HABIT_TYPE_DAILY);
+  if (daily > 0) {
+    if (sections) {
+      sections[num].type = HABIT_TYPE_DAILY;
+      sections[num].is_nav = false;
+      sections[num].count = daily;
+    }
+    num++;
+  }
+
+  int weekly = habit_model_get_count_by_type(HABIT_TYPE_WEEKLY);
+  if (weekly > 0) {
+    if (sections) {
+      sections[num].type = HABIT_TYPE_WEEKLY;
+      sections[num].is_nav = false;
+      sections[num].count = weekly;
+    }
+    num++;
+  }
+
+  int monthly = habit_model_get_count_by_type(HABIT_TYPE_MONTHLY);
+  if (monthly > 0) {
+    if (sections) {
+      sections[num].type = HABIT_TYPE_MONTHLY;
+      sections[num].is_nav = false;
+      sections[num].count = monthly;
+    }
+    num++;
+  }
+
+  // Nav section
+  if (sections) {
+    sections[num].is_nav = true;
+    sections[num].count = 2;
+  }
+  num++;
+
+  return num;
+}
+
+static uint16_t menu_get_num_sections_callback(MenuLayer *menu_layer, void *data) {
+  return get_sections(NULL);
 }
 
 static uint16_t menu_get_num_rows_callback(MenuLayer *menu_layer, uint16_t section_index, void *data) {
-  if (habit_model_get_count() == 0) {
-    return 1;
+  SectionInfo sections[4];
+  int total = get_sections(sections);
+  if (section_index < total) {
+    return sections[section_index].count;
   }
-  switch (section_index) {
-    case SECTION_DAILY:
-      return habit_model_get_count_by_type(HABIT_TYPE_DAILY);
-    case SECTION_WEEKLY:
-      return habit_model_get_count_by_type(HABIT_TYPE_WEEKLY);
-    case SECTION_MONTHLY:
-      return habit_model_get_count_by_type(HABIT_TYPE_MONTHLY);
-    case SECTION_NAV:
-      return 2; // "Previous Day", "Next Day"
-    default:
-      return 0;
-  }
+  return 0;
 }
 
 static int16_t menu_get_header_height_callback(MenuLayer *menu_layer, uint16_t section_index, void *data) {
-  if (habit_model_get_count() == 0) {
-    return 0;
-  }
-  // Hide header if section has no items
-  if (section_index < SECTION_NAV && habit_model_get_count_by_type((HabitType)section_index) == 0) {
+  if (s_is_loading || habit_model_get_count() == 0) {
     return 0;
   }
 #if defined(PBL_PLATFORM_EMERY)
@@ -85,7 +167,11 @@ static int16_t menu_get_header_height_callback(MenuLayer *menu_layer, uint16_t s
 }
 
 static void menu_draw_header_callback(GContext *ctx, const Layer *cell_layer, uint16_t section_index, void *data) {
-  if (habit_model_get_count() == 0) return;
+  if (s_is_loading || habit_model_get_count() == 0) return;
+
+  SectionInfo sections[4];
+  int total = get_sections(sections);
+  if (section_index >= total) return;
 
   GRect bounds = layer_get_bounds(cell_layer);
 
@@ -93,12 +179,15 @@ static void menu_draw_header_callback(GContext *ctx, const Layer *cell_layer, ui
   graphics_fill_rect(ctx, bounds, 0, GCornerNone);
 
   const char *title = "";
-  switch (section_index) {
-    case SECTION_DAILY:   title = "Daily Goals"; break;
-    case SECTION_WEEKLY:  title = "Weekly Goals"; break;
-    case SECTION_MONTHLY: title = "Monthly Goals"; break;
-    case SECTION_NAV:     title = "Date Navigation"; break;
-    default: break;
+  if (sections[section_index].is_nav) {
+    title = "Date Navigation";
+  } else {
+    switch (sections[section_index].type) {
+      case HABIT_TYPE_DAILY:   title = "Daily Goals"; break;
+      case HABIT_TYPE_WEEKLY:  title = "Weekly Goals"; break;
+      case HABIT_TYPE_MONTHLY: title = "Monthly Goals"; break;
+      default: break;
+    }
   }
 
   graphics_context_set_text_color(ctx, GColorPictonBlue);
@@ -109,7 +198,7 @@ static void menu_draw_header_callback(GContext *ctx, const Layer *cell_layer, ui
 }
 
 static int16_t menu_get_cell_height_callback(MenuLayer *menu_layer, MenuIndex *cell_index, void *data) {
-  if (habit_model_get_count() == 0) {
+  if (s_is_loading || habit_model_get_count() == 0) {
 #if defined(PBL_PLATFORM_EMERY)
     return 190;
 #else
@@ -117,7 +206,9 @@ static int16_t menu_get_cell_height_callback(MenuLayer *menu_layer, MenuIndex *c
 #endif
   }
 
-  if (cell_index->section == SECTION_NAV) {
+  SectionInfo sections[4];
+  int total = get_sections(sections);
+  if (cell_index->section < total && sections[cell_index->section].is_nav) {
 #if defined(PBL_PLATFORM_EMERY)
     return 36;
 #else
@@ -131,6 +222,58 @@ static int16_t menu_get_cell_height_callback(MenuLayer *menu_layer, MenuIndex *c
   return 46;
 #endif
 }
+
+static void draw_loading_row(GContext *ctx, const Layer *cell_layer) {
+  GRect bounds = layer_get_bounds(cell_layer);
+
+  graphics_context_set_fill_color(ctx, GColorBlack);
+  graphics_fill_rect(ctx, bounds, 0, GCornerNone);
+
+  int dot_count = (s_loading_frame % 4);
+  char text_buf[24];
+  if (dot_count == 0) {
+    snprintf(text_buf, sizeof(text_buf), "Loading");
+  } else if (dot_count == 1) {
+    snprintf(text_buf, sizeof(text_buf), "Loading.");
+  } else if (dot_count == 2) {
+    snprintf(text_buf, sizeof(text_buf), "Loading..");
+  } else {
+    snprintf(text_buf, sizeof(text_buf), "Loading...");
+  }
+
+  graphics_context_set_text_color(ctx, GColorPictonBlue);
+  GRect text_rect = GRect(8, bounds.size.h / 2 - 28, bounds.size.w - 16, 24);
+  graphics_draw_text(ctx, text_buf,
+                     fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD),
+                     text_rect, GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
+
+  graphics_context_set_text_color(ctx, GColorLightGray);
+  GRect sub_rect = GRect(8, bounds.size.h / 2 + 2, bounds.size.w - 16, 18);
+  graphics_draw_text(ctx, "Updating for selected date",
+                     fonts_get_system_font(FONT_KEY_GOTHIC_14),
+                     sub_rect, GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
+
+  int bar_w = bounds.size.w - 48;
+  int bar_h = 4;
+  int bar_x = 24;
+  int bar_y = bounds.size.h / 2 + 28;
+
+  graphics_context_set_fill_color(ctx, GColorDarkGray);
+  graphics_fill_rect(ctx, GRect(bar_x, bar_y, bar_w, bar_h), 2, GCornersAll);
+
+  int seg_w = bar_w / 3;
+  int cycle = bar_w + seg_w;
+  int pos = (s_loading_frame * 10) % cycle;
+  int x1 = bar_x + pos - seg_w;
+  int x2 = x1 + seg_w;
+  if (x1 < bar_x) x1 = bar_x;
+  if (x2 > bar_x + bar_w) x2 = bar_x + bar_w;
+  if (x2 > x1) {
+    graphics_context_set_fill_color(ctx, GColorPictonBlue);
+    graphics_fill_rect(ctx, GRect(x1, bar_y, x2 - x1, bar_h), 2, GCornersAll);
+  }
+}
+
 
 static void draw_signin_row(GContext *ctx, const Layer *cell_layer) {
   GRect bounds = layer_get_bounds(cell_layer);
@@ -276,43 +419,74 @@ static void draw_nav_row(GContext *ctx, const Layer *cell_layer, int row) {
 }
 
 static void menu_draw_row_callback(GContext *ctx, const Layer *cell_layer, MenuIndex *cell_index, void *data) {
+  if (s_is_loading) {
+    draw_loading_row(ctx, cell_layer);
+    return;
+  }
+
   if (habit_model_get_count() == 0) {
     draw_signin_row(ctx, cell_layer);
     return;
   }
 
-  if (cell_index->section == SECTION_NAV) {
+  SectionInfo sections[4];
+  int total = get_sections(sections);
+  if (cell_index->section >= total) return;
+
+  if (sections[cell_index->section].is_nav) {
     draw_nav_row(ctx, cell_layer, cell_index->row);
     return;
   }
 
-  Habit *habit = habit_model_get_by_type_index((HabitType)cell_index->section, cell_index->row);
+  Habit *habit = habit_model_get_by_type_index(sections[cell_index->section].type, cell_index->row);
   if (habit) {
     draw_habit_row(ctx, cell_layer, habit);
   }
 }
 
 static void menu_select_callback(MenuLayer *menu_layer, MenuIndex *cell_index, void *data) {
+  if (s_is_loading) {
+    return;
+  }
+
   if (habit_model_get_count() == 0) {
     vibes_short_pulse();
     comm_send_app_ready();
     return;
   }
 
-  if (cell_index->section == SECTION_NAV) {
+  SectionInfo sections[4];
+  int total = get_sections(sections);
+  if (cell_index->section >= total) return;
+
+  if (sections[cell_index->section].is_nav) {
     int current_offset = habit_model_get_day_offset();
-    if (cell_index->row == 0) {
-      habit_model_set_day_offset(current_offset - 1);
-    } else {
-      habit_model_set_day_offset(current_offset + 1);
+    int new_offset = (cell_index->row == 0) ? (current_offset - 1) : (current_offset + 1);
+    habit_model_set_day_offset(new_offset);
+    comm_request_sync(new_offset);
+
+    s_is_loading = true;
+    s_loading_frame = 0;
+    if (s_loading_timer) {
+      app_timer_cancel(s_loading_timer);
+      s_loading_timer = NULL;
     }
+    s_loading_timer = app_timer_register(180, loading_timer_callback, NULL);
+
+    if (s_safety_timer) {
+      app_timer_cancel(s_safety_timer);
+      s_safety_timer = NULL;
+    }
+    s_safety_timer = app_timer_register(8000, safety_timeout_callback, NULL);
+
     vibes_short_pulse();
     layer_mark_dirty(s_date_header_layer);
+    menu_layer_set_selected_index(s_menu_layer, MenuIndex(0, 0), MenuRowAlignTop, false);
     menu_layer_reload_data(s_menu_layer);
     return;
   }
 
-  Habit *habit = habit_model_get_by_type_index((HabitType)cell_index->section, cell_index->row);
+  Habit *habit = habit_model_get_by_type_index(sections[cell_index->section].type, cell_index->row);
   if (!habit) return;
 
   if (habit->is_derived) {
@@ -339,7 +513,19 @@ static void menu_select_callback(MenuLayer *menu_layer, MenuIndex *cell_index, v
 }
 
 static void on_model_changed(void) {
+  if (s_is_loading) {
+    s_is_loading = false;
+    if (s_loading_timer) {
+      app_timer_cancel(s_loading_timer);
+      s_loading_timer = NULL;
+    }
+    if (s_safety_timer) {
+      app_timer_cancel(s_safety_timer);
+      s_safety_timer = NULL;
+    }
+  }
   if (s_menu_layer) {
+    menu_layer_set_selected_index(s_menu_layer, MenuIndex(0, 0), MenuRowAlignTop, false);
     menu_layer_reload_data(s_menu_layer);
   }
   if (s_date_header_layer) {
@@ -381,6 +567,14 @@ static void window_load(Window *window) {
 }
 
 static void window_unload(Window *window) {
+  if (s_loading_timer) {
+    app_timer_cancel(s_loading_timer);
+    s_loading_timer = NULL;
+  }
+  if (s_safety_timer) {
+    app_timer_cancel(s_safety_timer);
+    s_safety_timer = NULL;
+  }
   habit_model_set_change_callback(NULL);
   menu_layer_destroy(s_menu_layer);
   s_menu_layer = NULL;

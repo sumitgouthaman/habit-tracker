@@ -25,6 +25,7 @@
     ],
     "messageKeys": [
       "AppReady",
+      "DayOffset",
       "HabitCount",
       "HabitIndex",
       "HabitId",
@@ -43,7 +44,14 @@
       "SyncStatus"
     ],
     "resources": {
-      "media": []
+      "media": [
+        {
+          "type": "bitmap",
+          "name": "IMAGE_MENU_ICON",
+          "file": "images/menu_icon.png",
+          "menuIcon": true
+        }
+      ]
     }
   }
 }

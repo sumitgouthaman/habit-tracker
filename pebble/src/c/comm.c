@@ -9,22 +9,34 @@ static void inbox_received_callback(DictionaryIterator *iterator, void *context)
   Tuple *index_tuple = dict_find(iterator, MESSAGE_KEY_HabitIndex);
   Tuple *id_tuple = dict_find(iterator, MESSAGE_KEY_HabitId);
 
+  // If phone signals 0 habits (empty or logged out)
+  if (count_tuple && count_tuple->value->int32 == 0 && !id_tuple) {
+    habit_model_clear();
+    habit_model_save();
+    return;
+  }
+
   if (id_tuple && index_tuple) {
     int index = index_tuple->value->int32;
     int total_count = count_tuple ? count_tuple->value->int32 : 1;
 
-    // If starting a fresh sync list from phone, clear old habits on first index
+    // If starting a fresh sync list from phone, clear old habits on first index silently
     if (index == 0 && total_count > 0) {
-      habit_model_clear();
+      habit_model_clear_silent();
     }
 
     Habit h;
     memset(&h, 0, sizeof(Habit));
-    strncpy(h.id, id_tuple->value->cstring, sizeof(h.id) - 1);
+
+    if (id_tuple->type == TUPLE_CSTRING) {
+      strncpy(h.id, id_tuple->value->cstring, sizeof(h.id) - 1);
+      h.id[sizeof(h.id) - 1] = '\0';
+    }
 
     Tuple *title_tuple = dict_find(iterator, MESSAGE_KEY_HabitTitle);
-    if (title_tuple) {
+    if (title_tuple && title_tuple->type == TUPLE_CSTRING) {
       strncpy(h.title, title_tuple->value->cstring, sizeof(h.title) - 1);
+      h.title[sizeof(h.title) - 1] = '\0';
     }
 
     Tuple *type_tuple = dict_find(iterator, MESSAGE_KEY_HabitType);
@@ -53,19 +65,25 @@ static void inbox_received_callback(DictionaryIterator *iterator, void *context)
     }
 
     Tuple *increments_tuple = dict_find(iterator, MESSAGE_KEY_HabitIncrements);
-    if (increments_tuple && strlen(increments_tuple->value->cstring) > 0) {
-      // Parse comma-separated increments (e.g. "1,2,5")
+    if (increments_tuple && increments_tuple->type == TUPLE_CSTRING &&
+        strlen(increments_tuple->value->cstring) > 0) {
       char inc_buf[32];
       strncpy(inc_buf, increments_tuple->value->cstring, sizeof(inc_buf) - 1);
       inc_buf[sizeof(inc_buf) - 1] = '\0';
-      char *token = strtok(inc_buf, ",");
       int inc_idx = 0;
-      while (token && inc_idx < MAX_INCREMENTS) {
-        int val = atoi(token);
+      char *p = inc_buf;
+      while (*p && inc_idx < MAX_INCREMENTS) {
+        while (*p == ' ' || *p == ',') p++;
+        if (*p == '\0') break;
+        int val = 0;
+        while (*p >= '0' && *p <= '9') {
+          val = val * 10 + (*p - '0');
+          p++;
+        }
         if (val > 0) {
           h.increments[inc_idx++] = val;
         }
-        token = strtok(NULL, ",");
+        while (*p && *p != ',') p++;
       }
       h.increment_count = inc_idx;
     }
@@ -75,13 +93,15 @@ static void inbox_received_callback(DictionaryIterator *iterator, void *context)
       h.increment_count = 1;
     }
 
-    habit_model_add_or_update(&h);
+    habit_model_add_or_update_silent(&h);
 
     if (index == total_count - 1) {
       habit_model_save();
+      habit_model_notify();
     }
   }
 }
+
 
 static void inbox_dropped_callback(AppMessageResult reason, void *context) {
   APP_LOG(APP_LOG_LEVEL_ERROR, "AppMessage inbox dropped: %d", (int)reason);
@@ -107,6 +127,15 @@ void comm_send_app_ready(void) {
   AppMessageResult result = app_message_outbox_begin(&out_iter);
   if (result == APP_MSG_OK && out_iter) {
     dict_write_uint8(out_iter, MESSAGE_KEY_AppReady, 1);
+    app_message_outbox_send();
+  }
+}
+
+void comm_request_sync(int day_offset) {
+  DictionaryIterator *out_iter;
+  AppMessageResult result = app_message_outbox_begin(&out_iter);
+  if (result == APP_MSG_OK && out_iter) {
+    dict_write_int32(out_iter, MESSAGE_KEY_DayOffset, day_offset);
     app_message_outbox_send();
   }
 }

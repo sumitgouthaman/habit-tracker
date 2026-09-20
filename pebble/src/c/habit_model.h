@@ -41,7 +41,10 @@ int habit_model_get_count_by_type(HabitType type);
 Habit* habit_model_get_by_type_index(HabitType type, int type_index);
 
 void habit_model_add_or_update(const Habit* habit);
+void habit_model_add_or_update_silent(const Habit* habit);
 void habit_model_clear(void);
+void habit_model_clear_silent(void);
+void habit_model_notify(void);
 
 // User actions
 void habit_model_toggle_habit(Habit* habit);
