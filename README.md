@@ -25,6 +25,12 @@ A simple Habit Tracker without ads or in-app purchases. I couldn't find one that
 |:---:|:---:|
 | <img src="android/screenshots/wearos_screenshot.png" width="250" alt="Wear OS habit list" /> | <img src="android/screenshots/wearos_recording.gif" width="250" alt="Wear OS recording" /> |
 
+### Watch (Pebble)
+
+| |
+|:---:|
+| <img src="screenshots/pebble_screenshot.png" width="200" alt="Pebble habit list" /> |
+
 ## Features
 
 -   **Smart Tracking**: Daily, Weekly, and Monthly habits with auto-reset.
