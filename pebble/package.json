@@ -1,0 +1,49 @@
+{
+  "name": "pebble-habit-tracker",
+  "author": "HabitTracker",
+  "version": "1.0.0",
+  "keywords": ["pebble-app"],
+  "private": true,
+  "dependencies": {},
+  "pebble": {
+    "displayName": "Habits",
+    "uuid": "b229949d-c6e7-4d10-9f53-6af3341edd5f",
+    "sdkVersion": "3",
+    "enableMultiJS": true,
+    "targetPlatforms": [
+      "emery",
+      "basalt",
+      "chalk",
+      "diorite",
+      "aplite"
+    ],
+    "watchapp": {
+      "watchface": false
+    },
+    "capabilities": [
+      "configurable"
+    ],
+    "messageKeys": [
+      "AppReady",
+      "HabitCount",
+      "HabitIndex",
+      "HabitId",
+      "HabitTitle",
+      "HabitType",
+      "HabitTarget",
+      "HabitValue",
+      "HabitCompleted",
+      "HabitDerived",
+      "HabitIncrements",
+      "UpdateHabitId",
+      "UpdateValue",
+      "UpdateTarget",
+      "UpdateType",
+      "UpdatePeriodKey",
+      "SyncStatus"
+    ],
+    "resources": {
+      "media": []
+    }
+  }
+}

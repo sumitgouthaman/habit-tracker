@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Habit Tracker - Pebble Settings</title>
+  <style>
+    :root {
+      --bg: #090d16;
+      --card-bg: rgba(30, 41, 59, 0.85);
+      --border: rgba(255, 255, 255, 0.12);
+      --primary: #3b82f6;
+      --primary-hover: #2563eb;
+      --success: #22c55e;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+    }
+    body {
+      margin: 0;
+      padding: 24px 16px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      box-sizing: border-box;
+    }
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px;
+      max-width: 440px;
+      width: 100%;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+      box-sizing: border-box;
+    }
+    h1 {
+      font-size: 1.5rem;
+      margin: 0 0 6px 0;
+      text-align: center;
+    }
+    p.subtitle {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      text-align: center;
+      margin: 0 0 20px 0;
+    }
+    label {
+      font-size: 0.9rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+      display: block;
+      color: #cbd5e1;
+    }
+    textarea {
+      width: 100%;
+      height: 90px;
+      padding: 12px;
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: #e2e8f0;
+      font-family: monospace;
+      font-size: 0.85rem;
+      box-sizing: border-box;
+      resize: vertical;
+      word-break: break-all;
+    }
+    textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+    .btn {
+      width: 100%;
+      padding: 13px;
+      border-radius: 8px;
+      border: none;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+      margin-top: 14px;
+      box-sizing: border-box;
+      transition: background-color 0.2s, transform 0.1s;
+    }
+    .btn:active {
+      transform: scale(0.98);
+    }
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+    }
+    .btn-primary:hover {
+      background: var(--primary-hover);
+    }
+    .btn-disconnect {
+      background: transparent;
+      border: 1px solid rgba(239, 68, 68, 0.4);
+      color: #f87171;
+      font-size: 0.85rem;
+      padding: 9px;
+      margin-top: 10px;
+    }
+    .btn-disconnect:hover {
+      background: rgba(239, 68, 68, 0.1);
+    }
+    .status-badge {
+      display: none;
+      background: rgba(34, 197, 94, 0.15);
+      color: var(--success);
+      border: 1px solid rgba(34, 197, 94, 0.3);
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      text-align: center;
+      margin-bottom: 20px;
+      line-height: 1.4;
+    }
+    .status-badge strong {
+      display: block;
+      color: #ffffff;
+      font-size: 0.95rem;
+      margin-bottom: 2px;
+    }
+    .instructions {
+      margin-top: 24px;
+      padding-top: 16px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+    .instructions ol {
+      padding-left: 20px;
+      margin: 8px 0 0 0;
+    }
+    .instructions li {
+      margin-bottom: 4px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="card">
+  <h1>Habit Tracker</h1>
+  <p class="subtitle">Pebble Time 2 Settings</p>
+
+  <div id="statusBadge" class="status-badge">
+    <strong>Connected to Habit Tracker</strong>
+    <span id="connectedUserId" style="font-size: 0.8rem; opacity: 0.85;"></span>
+  </div>
+
+  <label for="syncTokenInput">Pebble Sync Token</label>
+  <textarea id="syncTokenInput" placeholder="Paste your Pebble Sync Token here..."></textarea>
+
+  <button type="button" class="btn btn-primary" id="btnSave">Save & Connect Watch</button>
+  <button type="button" class="btn btn-disconnect" id="btnDisconnect" style="display: none;">Disconnect / Sign Out</button>
+
+  <div class="instructions">
+    <strong>How to get your Sync Token:</strong>
+    <ol>
+      <li>Open the Habit Tracker web app in your phone or computer browser.</li>
+      <li>Go to <strong>Settings</strong> &gt; <strong>Pebble Watch Companion</strong>.</li>
+      <li>Tap <strong>Copy Pebble Sync Token</strong>.</li>
+      <li>Paste it into the box above and tap <strong>Save & Connect Watch</strong>.</li>
+    </ol>
+  </div>
+</div>
+
+<script>
+  function getQueryParam(variable, defaultVal) {
+    const query = window.location.search.substring(1);
+    const vars = query.split('&');
+    for (let i = 0; i < vars.length; i++) {
+      const pair = vars[i].split('=');
+      if (decodeURIComponent(pair[0]) === variable) {
+        return decodeURIComponent(pair[1]);
+      }
+    }
+    return defaultVal;
+  }
+
+  const existingUserId = getQueryParam('userId', '');
+  if (existingUserId) {
+    document.getElementById('statusBadge').style.display = 'block';
+    document.getElementById('connectedUserId').textContent = 'User ID: ' + existingUserId;
+    document.getElementById('btnDisconnect').style.display = 'block';
+  }
+
+  document.getElementById('btnSave').addEventListener('click', function () {
+    const rawInput = document.getElementById('syncTokenInput').value.trim();
+    if (!rawInput) {
+      alert('Please paste your Pebble Sync Token into the text box first.');
+      return;
+    }
+
+    let payload = null;
+    try {
+      payload = JSON.parse(atob(rawInput));
+    } catch (e1) {
+      try {
+        payload = JSON.parse(rawInput);
+      } catch (e2) {
+        alert('Invalid token format. Please copy the token again from Habit Tracker Settings in your browser.');
+        return;
+      }
+    }
+
+    if (!payload || !payload.uid || !payload.rt) {
+      alert('Incomplete token: missing user ID or refresh token. Please re-copy from Habit Tracker web settings.');
+      return;
+    }
+
+    const config = {
+      userId: payload.uid,
+      refreshToken: payload.rt,
+      updatedAt: Date.now()
+    };
+
+    const returnUrl = getQueryParam('return_to', 'pebblejs://close#');
+    window.location.href = returnUrl + encodeURIComponent(JSON.stringify(config));
+  });
+
+  document.getElementById('btnDisconnect').addEventListener('click', function () {
+    if (!confirm('Disconnect watch from Habit Tracker?')) return;
+    const config = {
+      userId: '',
+      refreshToken: '',
+      updatedAt: Date.now()
+    };
+    const returnUrl = getQueryParam('return_to', 'pebblejs://close#');
+    window.location.href = returnUrl + encodeURIComponent(JSON.stringify(config));
+  });
+</script>
+
+</body>
+</html>

@@ -35,11 +35,12 @@ A simple Habit Tracker without ads or in-app purchases. I couldn't find one that
 
 ## Tech Stack
 
--   **Frontend**: React, Vite
--   **Backend**: Firebase (Firestore, Auth, Hosting)
+-   **Frontend**: React, Vite, GitHub Pages
+-   **Backend**: Firebase (Firestore, Auth)
 -   **Styling**: CSS Modules
 -   **Icons**: Lucide React
 -   **Wear OS**: Kotlin, Jetpack Compose
+-   **Pebble**: C (Pebble SDK 4.33, Emery 200x228, Basalt, Chalk), PebbleKit JS
 
 ## Getting Started
 
@@ -61,10 +62,19 @@ A simple Habit Tracker without ads or in-app purchases. I couldn't find one that
 
 To build or run the Wear OS app, open the `android` directory in Android Studio. Ensure you have the necessary SDKs and a Wear OS emulator configured.
 
+### Pebble App (Pebble Time 2)
+
+The Pebble app is located in the [`pebble/`](./pebble) directory. For instructions on installing the SDK, building the project, and deploying to an emulator or physical watch, follow the official Rebble developer documentation:
+👉 [**Rebble SDK Documentation**](https://developer.repebble.com/sdk/)
+
+## Hosting & Backend Architecture
+
+- **Web App Hosting**: The web application is hosted on **GitHub Pages** under the custom domain [https://habit-tracker.sumitgouthaman.com/](https://habit-tracker.sumitgouthaman.com/). Deployments are handled automatically via GitHub Actions ([`.github/workflows/deploy.yml`](./.github/workflows/deploy.yml)) whenever commits are pushed to the `main` branch.
+- **Backend Services**: **Firebase** is used strictly as a backend service for **Cloud Firestore** (data storage, security rules, and indexes) and **Firebase Authentication** (Google sign-in). Firebase Hosting is not used.
+
 ## Deployment & Setup
 
 For detailed backend configuration (Security Rules, Indexes) and deployment instructions, see:
 👉 [**firebase/SETUP.md**](./firebase/SETUP.md)
-
 
 

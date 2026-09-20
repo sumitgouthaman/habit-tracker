@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useHabits } from '../context/HabitContext';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Trash2, LogOut, Download, Upload, LogIn, Cloud } from 'lucide-react';
+import { Trash2, LogOut, Download, Upload, LogIn, Cloud, Watch, Copy, Check } from 'lucide-react';
 
 export default function Settings() {
     const { user, isGuest, setGuestMode } = useAuth();
@@ -12,6 +12,19 @@ export default function Settings() {
     const [deleting, setDeleting] = useState(false);
     const [exporting, setExporting] = useState(false);
     const [importing, setImporting] = useState(false);
+    const [copiedPebbleToken, setCopiedPebbleToken] = useState(false);
+
+    const handleCopyPebbleToken = () => {
+        if (!user) return;
+        const payload = {
+            uid: user.uid,
+            rt: user.refreshToken
+        };
+        const token = btoa(JSON.stringify(payload));
+        navigator.clipboard.writeText(token);
+        setCopiedPebbleToken(true);
+        setTimeout(() => setCopiedPebbleToken(false), 3000);
+    };
 
     const handleSignOut = () => {
         auth.signOut();
@@ -177,6 +190,56 @@ export default function Settings() {
                     </>
                 )}
             </div>
+
+            <div className="glass-panel" style={{ marginBottom: '2rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '0.75rem' }}>
+                    <Watch size={22} style={{ color: 'var(--color-primary)' }} />
+                    <h3 style={{ margin: 0 }}>Pebble Watch Companion</h3>
+                </div>
+
+                {isGuest || !user ? (
+                    <p style={{ color: 'var(--color-text-dim)', fontSize: '0.9rem', margin: 0 }}>
+                        Please sign in above to generate and copy your Pebble Sync Token.
+                    </p>
+                ) : (
+                    <>
+                        <p style={{ color: 'var(--color-text-dim)', fontSize: '0.9rem', marginBottom: '1.25rem', lineHeight: '1.5' }}>
+                            Connect your Pebble Time 2 watch. Copy this sync token, open the <strong>Pebble app on your phone</strong>, tap the <strong>gear icon (Settings)</strong> next to Habit Tracker, and paste the token.
+                        </p>
+
+                        <button
+                            onClick={handleCopyPebbleToken}
+                            style={{
+                                width: '100%',
+                                padding: '0.9rem',
+                                background: copiedPebbleToken ? 'rgba(34, 197, 94, 0.2)' : 'var(--color-primary)',
+                                border: copiedPebbleToken ? '1px solid rgba(34, 197, 94, 0.5)' : 'none',
+                                borderRadius: '8px',
+                                color: 'white',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '8px',
+                                transition: 'all 0.2s',
+                                fontSize: '1rem',
+                                fontWeight: 500
+                            }}
+                        >
+                            {copiedPebbleToken ? (
+                                <>
+                                    <Check size={20} style={{ color: '#4ade80' }} /> Copied to Clipboard!
+                                </>
+                            ) : (
+                                <>
+                                    <Copy size={20} /> Copy Pebble Sync Token
+                                </>
+                            )}
+                        </button>
+                    </>
+                )}
+            </div>
+
 
             <div className="glass-panel" style={{ marginBottom: '2rem' }}>
                 <h3 style={{ marginBottom: '1.5rem' }}>Data Management</h3>
