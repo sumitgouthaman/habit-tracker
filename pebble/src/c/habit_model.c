@@ -139,10 +139,21 @@ void habit_model_reset_habit(Habit* habit) {
 }
 
 void habit_model_save(void) {
+  // Read previous count to clean up orphaned keys
+  int prev_count = 0;
+  if (persist_exists(PERSIST_KEY_COUNT)) {
+    prev_count = persist_read_int(PERSIST_KEY_COUNT);
+  }
+
   persist_write_int(PERSIST_KEY_VERSION, CURRENT_STORAGE_VERSION);
   persist_write_int(PERSIST_KEY_COUNT, s_habit_count);
   for (int i = 0; i < s_habit_count; i++) {
     persist_write_data(PERSIST_KEY_HABIT_BASE + i, &s_habits[i], sizeof(Habit));
+  }
+
+  // Delete orphaned keys from prior saves with more habits
+  for (int i = s_habit_count; i < prev_count && i < MAX_HABITS; i++) {
+    persist_delete(PERSIST_KEY_HABIT_BASE + i);
   }
 }
 
@@ -202,6 +213,10 @@ void habit_model_get_date_string(int day_offset, char* buffer, size_t buffer_siz
 void habit_model_get_period_key(HabitType type, int day_offset, char* buffer, size_t buffer_size) {
   time_t target = time(NULL) + (day_offset * 86400);
   struct tm* tm = localtime(&target);
+  if (!tm) {
+    snprintf(buffer, buffer_size, "unknown");
+    return;
+  }
 
   switch (type) {
     case HABIT_TYPE_WEEKLY: {
@@ -209,7 +224,11 @@ void habit_model_get_period_key(HabitType type, int day_offset, char* buffer, si
       int days_to_monday = (tm->tm_wday + 6) % 7;
       time_t monday = target - (days_to_monday * 86400);
       struct tm* monday_tm = localtime(&monday);
-      strftime(buffer, buffer_size, "%Y-%m-%d", monday_tm);
+      if (monday_tm) {
+        strftime(buffer, buffer_size, "%Y-%m-%d", monday_tm);
+      } else {
+        snprintf(buffer, buffer_size, "unknown");
+      }
       break;
     }
     case HABIT_TYPE_MONTHLY:

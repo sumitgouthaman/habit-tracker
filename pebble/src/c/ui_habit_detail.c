@@ -7,6 +7,7 @@ static Window *s_window = NULL;
 static Layer *s_header_layer = NULL;
 static MenuLayer *s_menu_layer = NULL;
 static Habit *s_habit = NULL;
+static char s_habit_id[HABIT_ID_MAX_LEN] = "";
 
 typedef struct {
   char label[16];
@@ -72,7 +73,8 @@ static void header_update_proc(Layer *layer, GContext *ctx) {
   char count_buf[32];
   snprintf(count_buf, sizeof(count_buf), "%d / %d", s_habit->current_value, s_habit->target_count);
   GRect count_rect = GRect(8, 26, bounds.size.w - 16, 26);
-  GColor text_color = s_habit->is_completed ? GColorKellyGreen : GColorWhite;
+  GColor text_color = s_habit->is_completed ?
+    PBL_IF_COLOR_ELSE(GColorKellyGreen, GColorWhite) : GColorWhite;
   graphics_context_set_text_color(ctx, text_color);
   graphics_draw_text(ctx, count_buf,
                      fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD),
@@ -85,14 +87,16 @@ static void header_update_proc(Layer *layer, GContext *ctx) {
   int bar_w = bounds.size.w - 24;
 
   // Track background
-  graphics_context_set_fill_color(ctx, GColorDarkGray);
+  graphics_context_set_fill_color(ctx, PBL_IF_COLOR_ELSE(GColorDarkGray, GColorWhite));
   graphics_fill_rect(ctx, GRect(bar_x, bar_y, bar_w, bar_h), 2, GCornersAll);
 
   // Fill
   if (s_habit->target_count > 0 && s_habit->current_value > 0) {
     int fill_w = (s_habit->current_value * bar_w) / s_habit->target_count;
     if (fill_w > bar_w) fill_w = bar_w;
-    GColor fill_color = s_habit->is_completed ? GColorKellyGreen : GColorChromeYellow;
+    GColor fill_color = s_habit->is_completed ?
+      PBL_IF_COLOR_ELSE(GColorKellyGreen, GColorWhite) :
+      PBL_IF_COLOR_ELSE(GColorChromeYellow, GColorWhite);
     graphics_context_set_fill_color(ctx, fill_color);
     graphics_fill_rect(ctx, GRect(bar_x, bar_y, fill_w, bar_h), 2, GCornersAll);
   }
@@ -117,11 +121,18 @@ static void menu_draw_row_callback(GContext *ctx, const Layer *cell_layer, MenuI
   GRect bounds = layer_get_bounds(cell_layer);
   bool is_highlighted = menu_cell_layer_is_highlighted(cell_layer);
 
-  GColor bg_color = is_highlighted ? GColorCobaltBlue : GColorBlack;
+  GColor bg_color = is_highlighted ?
+    PBL_IF_COLOR_ELSE(GColorCobaltBlue, GColorWhite) : GColorBlack;
   graphics_context_set_fill_color(ctx, bg_color);
   graphics_fill_rect(ctx, bounds, 0, GCornerNone);
 
-  GColor text_color = is_highlighted ? GColorWhite : (s_actions[row].is_reset ? GColorRed : GColorWhite);
+  GColor text_color;
+  if (is_highlighted) {
+    text_color = PBL_IF_COLOR_ELSE(GColorWhite, GColorBlack);
+  } else {
+    text_color = s_actions[row].is_reset ?
+      PBL_IF_COLOR_ELSE(GColorRed, GColorWhite) : GColorWhite;
+  }
   graphics_context_set_text_color(ctx, text_color);
 
   GRect text_rect = GRect(12, (bounds.size.h - 22) / 2, bounds.size.w - 24, 22);
@@ -185,13 +196,16 @@ static void window_unload(Window *window) {
   s_menu_layer = NULL;
   layer_destroy(s_header_layer);
   s_header_layer = NULL;
-  window_destroy(s_window);
-  s_window = NULL;
+  // Note: Do NOT destroy s_window here — Pebble OS still holds the pointer
+  // after window_unload returns. The window is reused on next push.
   s_habit = NULL;
+  s_habit_id[0] = '\0';
 }
 
 void ui_habit_detail_push(Habit *habit) {
   s_habit = habit;
+  strncpy(s_habit_id, habit->id, sizeof(s_habit_id) - 1);
+  s_habit_id[sizeof(s_habit_id) - 1] = '\0';
   setup_actions();
 
   if (!s_window) {
@@ -203,4 +217,17 @@ void ui_habit_detail_push(Habit *habit) {
     });
   }
   window_stack_push(s_window, true);
+}
+
+void ui_habit_detail_on_model_changed(void) {
+  if (!s_window || s_habit_id[0] == '\0') return;
+
+  // Re-lookup habit by stored ID to avoid dangling pointer
+  s_habit = habit_model_get_by_id(s_habit_id);
+  if (s_habit && s_header_layer) {
+    layer_mark_dirty(s_header_layer);
+  }
+  if (s_menu_layer) {
+    menu_layer_reload_data(s_menu_layer);
+  }
 }

@@ -76,11 +76,15 @@ function getValidToken(callback) {
   xhr.send('grant_type=refresh_token&refresh_token=' + encodeURIComponent(cfg.refreshToken));
 }
 
+function pad2(n) {
+  return (n < 10 ? '0' : '') + n;
+}
+
 function getPeriodKey(date, type) {
   var d = date || new Date();
   var yyyy = d.getFullYear();
-  var mm = String(d.getMonth() + 1).padStart(2, '0');
-  var dd = String(d.getDate()).padStart(2, '0');
+  var mm = pad2(d.getMonth() + 1);
+  var dd = pad2(d.getDate());
 
   if (type === 1 || type === 'weekly') {
     // Monday of this week
@@ -89,8 +93,8 @@ function getPeriodKey(date, type) {
     var monday = new Date(d);
     monday.setDate(d.getDate() - diff);
     var myyyy = monday.getFullYear();
-    var mmm = String(monday.getMonth() + 1).padStart(2, '0');
-    var mdd = String(monday.getDate()).padStart(2, '0');
+    var mmm = pad2(monday.getMonth() + 1);
+    var mdd = pad2(monday.getDate());
     return myyyy + '-' + mmm + '-' + mdd;
   }
 
@@ -136,10 +140,6 @@ function sendHabitsToWatch(habits, index) {
       });
     }, 500);
   });
-}
-
-function pad2(n) {
-  return (n < 10 ? '0' : '') + n;
 }
 
 function formatDate(d) {
@@ -222,7 +222,7 @@ function computeDerivedLog(habit, sourceHabit, evalDate) {
 }
 
 function fetchHabitsFromFirestore(userId, idToken, targetDate) {
-  var url = FIRESTORE_BASE + encodeURIComponent(userId) + '/habits';
+  var url = FIRESTORE_BASE + encodeURIComponent(userId) + '/habits?pageSize=100';
   var xhr = new XMLHttpRequest();
   xhr.open('GET', url, true);
   if (idToken) {
@@ -323,19 +323,22 @@ function fetchHabitsFromFirestore(userId, idToken, targetDate) {
 
         if (habitsToSend.length > 0) {
           sendHabitsToWatch(habitsToSend, 0);
-          return;
+        } else {
+          // Genuinely 0 active habits after filtering
+          Pebble.sendAppMessage({ HabitCount: 0 });
         }
+        return;
       } catch (err) {
         console.error('Error parsing Firestore response:', err);
       }
     }
-    // No habits found or error
-    Pebble.sendAppMessage({ HabitCount: 0 });
+    // HTTP error or parse failure — preserve cached watch data
+    Pebble.sendAppMessage({ SyncStatus: -1 });
   };
 
   xhr.onerror = function () {
     console.error('Firestore network error');
-    Pebble.sendAppMessage({ HabitCount: 0 });
+    Pebble.sendAppMessage({ SyncStatus: -1 });
   };
 
   xhr.send();

@@ -5,6 +5,16 @@
 #define OUTBOX_SIZE 512
 
 static void inbox_received_callback(DictionaryIterator *iterator, void *context) {
+  // Handle sync status (error) messages — preserve cached data on failure
+  Tuple *sync_status_tuple = dict_find(iterator, MESSAGE_KEY_SyncStatus);
+  if (sync_status_tuple) {
+    int status = sync_status_tuple->value->int32;
+    if (status < 0) {
+      APP_LOG(APP_LOG_LEVEL_WARNING, "Sync failed (status %d), keeping cached habits", status);
+    }
+    return;
+  }
+
   Tuple *count_tuple = dict_find(iterator, MESSAGE_KEY_HabitCount);
   Tuple *index_tuple = dict_find(iterator, MESSAGE_KEY_HabitIndex);
   Tuple *id_tuple = dict_find(iterator, MESSAGE_KEY_HabitId);

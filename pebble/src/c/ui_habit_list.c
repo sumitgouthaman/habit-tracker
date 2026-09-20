@@ -315,12 +315,15 @@ static void draw_habit_row(GContext *ctx, const Layer *cell_layer, Habit *habit)
   bool is_highlighted = menu_cell_layer_is_highlighted(cell_layer);
 
   // Background
-  GColor bg_color = is_highlighted ? GColorCobaltBlue : GColorBlack;
+  GColor bg_color = is_highlighted ?
+    PBL_IF_COLOR_ELSE(GColorCobaltBlue, GColorWhite) : GColorBlack;
   graphics_context_set_fill_color(ctx, bg_color);
   graphics_fill_rect(ctx, bounds, 0, GCornerNone);
 
   // Title
-  graphics_context_set_text_color(ctx, GColorWhite);
+  GColor title_color = is_highlighted ?
+    PBL_IF_COLOR_ELSE(GColorWhite, GColorBlack) : GColorWhite;
+  graphics_context_set_text_color(ctx, title_color);
   GRect title_rect = GRect(8, 2, bounds.size.w - 44, 22);
   graphics_draw_text(ctx, habit->title,
                      fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD),
@@ -330,7 +333,8 @@ static void draw_habit_row(GContext *ctx, const Layer *cell_layer, Habit *habit)
   char progress_buf[24];
   snprintf(progress_buf, sizeof(progress_buf), "%d / %d", habit->current_value, habit->target_count);
 
-  GColor sub_color = is_highlighted ? GColorWhite : GColorLightGray;
+  GColor sub_color = is_highlighted ?
+    PBL_IF_COLOR_ELSE(GColorWhite, GColorBlack) : GColorLightGray;
   graphics_context_set_text_color(ctx, sub_color);
   GRect prog_rect = GRect(8, 24, 60, 18);
   graphics_draw_text(ctx, progress_buf,
@@ -367,11 +371,11 @@ static void draw_habit_row(GContext *ctx, const Layer *cell_layer, Habit *habit)
   GPoint check_center = GPoint(bounds.size.w - 20, bounds.size.h / 2 - 3);
 
   if (habit->is_completed) {
-    graphics_context_set_fill_color(ctx, GColorKellyGreen);
+    graphics_context_set_fill_color(ctx, PBL_IF_COLOR_ELSE(GColorKellyGreen, GColorWhite));
     graphics_fill_circle(ctx, check_center, check_radius);
 
-    // Draw checkmark symbol
-    graphics_context_set_stroke_color(ctx, GColorWhite);
+    // Draw checkmark symbol (black on monochrome for visibility)
+    graphics_context_set_stroke_color(ctx, PBL_IF_COLOR_ELSE(GColorWhite, GColorBlack));
     graphics_draw_line(ctx, GPoint(check_center.x - 4, check_center.y), GPoint(check_center.x - 1, check_center.y + 4));
     graphics_draw_line(ctx, GPoint(check_center.x - 1, check_center.y + 4), GPoint(check_center.x + 5, check_center.y - 3));
     // Line thickness
@@ -390,13 +394,15 @@ static void draw_habit_row(GContext *ctx, const Layer *cell_layer, Habit *habit)
   int bar_x = 8;
   int bar_w = bounds.size.w - 16;
 
-  graphics_context_set_fill_color(ctx, GColorDarkGray);
+  graphics_context_set_fill_color(ctx, PBL_IF_COLOR_ELSE(GColorDarkGray, GColorWhite));
   graphics_fill_rect(ctx, GRect(bar_x, bar_y, bar_w, bar_h), 1, GCornersAll);
 
   if (habit->target_count > 0 && habit->current_value > 0) {
     int fill_w = (habit->current_value * bar_w) / habit->target_count;
     if (fill_w > bar_w) fill_w = bar_w;
-    GColor fill_color = habit->is_completed ? GColorKellyGreen : GColorChromeYellow;
+    GColor fill_color = habit->is_completed ?
+      PBL_IF_COLOR_ELSE(GColorKellyGreen, GColorWhite) :
+      PBL_IF_COLOR_ELSE(GColorChromeYellow, GColorWhite);
     graphics_context_set_fill_color(ctx, fill_color);
     graphics_fill_rect(ctx, GRect(bar_x, bar_y, fill_w, bar_h), 1, GCornersAll);
   }
@@ -406,12 +412,15 @@ static void draw_nav_row(GContext *ctx, const Layer *cell_layer, int row) {
   GRect bounds = layer_get_bounds(cell_layer);
   bool is_highlighted = menu_cell_layer_is_highlighted(cell_layer);
 
-  GColor bg_color = is_highlighted ? GColorCobaltBlue : GColorBlack;
+  GColor bg_color = is_highlighted ?
+    PBL_IF_COLOR_ELSE(GColorCobaltBlue, GColorWhite) : GColorBlack;
   graphics_context_set_fill_color(ctx, bg_color);
   graphics_fill_rect(ctx, bounds, 0, GCornerNone);
 
   const char *nav_text = (row == 0) ? "<  Previous Day" : "Next Day  >";
-  graphics_context_set_text_color(ctx, GColorWhite);
+  GColor nav_text_color = is_highlighted ?
+    PBL_IF_COLOR_ELSE(GColorWhite, GColorBlack) : GColorWhite;
+  graphics_context_set_text_color(ctx, nav_text_color);
   GRect text_rect = GRect(8, (bounds.size.h - 18) / 2, bounds.size.w - 16, 18);
   graphics_draw_text(ctx, nav_text,
                      fonts_get_system_font(FONT_KEY_GOTHIC_14_BOLD),
@@ -513,6 +522,7 @@ static void menu_select_callback(MenuLayer *menu_layer, MenuIndex *cell_index, v
 }
 
 static void on_model_changed(void) {
+  bool was_loading = s_is_loading;
   if (s_is_loading) {
     s_is_loading = false;
     if (s_loading_timer) {
@@ -525,12 +535,16 @@ static void on_model_changed(void) {
     }
   }
   if (s_menu_layer) {
-    menu_layer_set_selected_index(s_menu_layer, MenuIndex(0, 0), MenuRowAlignTop, false);
+    if (was_loading) {
+      menu_layer_set_selected_index(s_menu_layer, MenuIndex(0, 0), MenuRowAlignTop, false);
+    }
     menu_layer_reload_data(s_menu_layer);
   }
   if (s_date_header_layer) {
     layer_mark_dirty(s_date_header_layer);
   }
+  // Notify detail view so it can refresh its stale habit pointer
+  ui_habit_detail_on_model_changed();
 }
 
 static void window_load(Window *window) {

@@ -202,7 +202,7 @@
 
     let payload = null;
     try {
-      payload = JSON.parse(atob(rawInput));
+      payload = JSON.parse(atob(rawInput.replace(/\s+/g, '')));
     } catch (e1) {
       try {
         payload = JSON.parse(rawInput);
@@ -223,7 +223,7 @@
       updatedAt: Date.now()
     };
 
-    const returnUrl = getQueryParam('return_to', 'pebblejs://close#');
+    const returnUrl = 'pebblejs://close#';
     window.location.href = returnUrl + encodeURIComponent(JSON.stringify(config));
   });
 
@@ -234,7 +234,7 @@
       refreshToken: '',
       updatedAt: Date.now()
     };
-    const returnUrl = getQueryParam('return_to', 'pebblejs://close#');
+    const returnUrl = 'pebblejs://close#';
     window.location.href = returnUrl + encodeURIComponent(JSON.stringify(config));
   });
 </script>
